@@ -1,0 +1,20 @@
+{
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.1.2",
+    "@metamask/onboarding": "^1.0.1",
+    "@openzeppelin/contracts": "^4.7.3",
+    "@truffle/hdwallet-provider": "^2.0.14",
+    "aws-sdk": "^2.1269.0",
+    "dotenv": "^16.0.1",
+    "dynamodb-doc": "^1.0.0",
+    "ethereum-waffle": "^3.4.4",
+    "ethers": "^5.6.9",
+    "hardhat": "^2.10.0",
+    "truffle": "^5.6.8",
+    "truffle-contract-size": "^2.0.1"
+  },
+  "devDependencies": {
+    "@openzeppelin/test-helpers": "^0.5.15",
+    "solidity-coverage": "^0.7.21"
+  }
+}
