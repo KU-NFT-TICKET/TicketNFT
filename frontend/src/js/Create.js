@@ -18,6 +18,7 @@ import {Buffer} from 'buffer';
 import {scanData, getData, putData, queryData} from './dynamoDB';
 import {uploadPic} from './fileS3';
 import Swal from 'sweetalert2'
+import axios from "axios"
 
 import "react-datepicker/dist/react-datepicker.css";
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -68,20 +69,14 @@ class Create extends React.Component {
     await provider.send("eth_requestAccounts", []);
     const accounts = await provider.listAccounts();
 
-    const detailAccount = await getData("Accounts", {address: accounts[0]});
+    var q = {query: "select * from Accounts where address = ? and remove_date is null", bind: [accounts[0]]}
+    const detailAccount = await axios.post("http://localhost:8800/select", q);
 
-    const contractMarket = new ethers.Contract(
-      addressContract.market,
-      contractTicketPlace.output.abi,
-      provider.getSigner(),
-    )
-    console.log(await contractMarket.name())
-
-    if(!detailAccount.Item) {
+    if(!detailAccount.data) {
       console.log("Need to Activate Account")
       alert("Need to Activate Account!!!")
     } else {
-      console.log("-_-")
+      console.time('create Event');
       var name = $("input[name=name]").val()
       var sdate = new Date(this.state.sdate).toISOString()
       var sdate_e = format(parseISO(sdate), 'yyyyMMddHHMMss')
@@ -97,169 +92,77 @@ class Create extends React.Component {
       var bfP = this.state.bufferP
       var bfS = this.state.bufferS
       var limit = $("input[name=limit]").val()
-      const countItems = await scanData('Events', '', 'COUNT');
-      var index = countItems.Count;
       // var index = countItems.Count + 1;
-      console.log(index);
       if (name && sdate && edate && detail && zone.length > 0 && zoneseat.length > 0 && number.length > 0 && price.length > 0 && bfP && bfS) {
-        var _priceGas = await provider.getGasPrice();
         var all_seat = 0;
         for (var z = 0; z <zone.length; z++){
-
           all_seat += ((parseInt(zoneseat[z].charCodeAt(0)) - 65) + 1 ) * number[z];
         }
-        var sent_price = _priceGas * all_seat;
         Swal.fire({
           title: 'Are you sure?',
-          text: "Create Event '" + name + "' " + all_seat + " seats with \n" + ((sent_price / 1000000000000000000)).toString() + " Avax \n (gas/ticket = " + ((_priceGas / 1000000000000000000)).toString()  + " Avax)",
+          text: "Create Event '" + name + "' " + all_seat + " seats",
           icon: 'warning',
           showCancelButton: true,
           confirmButtonColor: '#3085d6',
           cancelButtonColor: '#d33',
-          confirmButtonText: 'Yes, Create Event!'
+          confirmButtonText: 'Yes, Create Event!',
+          showLoaderOnConfirm: true,
+          preConfirm: async () => {
+            q = {query: "insert into Events (creator, date_event, date_sell, detail, event_name, purchase_limit) values (?, STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), ?, ?, ?)", 
+            bind: [accounts[0], edate, sdate, detail, name, limit]}
+            var putItem = await axios.post("http://localhost:8800/insert", q);
+            console.log(putItem);
+            if (putItem.data.insertId !== undefined) {
+              var putPoster = uploadPic(bfP, putItem.data.insertId+'.png', 'poster');
+              console.log(putPoster);
+              var putSeat = uploadPic(bfS, putItem.data.insertId+'.png', '');
+              console.log(putSeat);
+            
+              for (var z = 0; z < zone.length; z++) {
+                for (var i = 65; i <= zoneseat[z].charCodeAt(0); i++) {
+                  for (var n = 1; n <= number[z]; n++) {
+                    var _priceGas = await provider.getGasPrice();
+                    _priceGas = ethers.utils.formatUnits(_priceGas, "wei")
+                    var wei_price = price[z] * 1000000000000000000
+                    var _metadata = hash({
+                        EventName: name, 
+                        dateEvent: edate_e,
+                        seat: zone[z] + "/" + String.fromCharCode(i) + n.toString(), 
+                        price: wei_price, 
+                        creater: accounts[0]
+                    });
+                    try {
+                      q = {query: "insert into Seats (event_id, gas, price, seat_id, seat_row, zone) values (?, ?, ?, ?, ?, ?)", 
+                      bind: [putItem.data.insertId, _priceGas, wei_price, n, String.fromCharCode(i), zone[z]]}
+                      var putTicket = await axios.post("http://localhost:8800/insert", q);
+                      console.log(putTicket)
+                    } catch (e) {
+                      console.log(e)
+                    }
+                  }
+                }
+              }
+              return {err: 0, msg: "insert success"}
+            } else {
+              alert("db error")
+              return {err: 1, msg: "DB Error:" + putItem.err}
+            }
+          }
         }).then(async (result) => {
           if (result.isConfirmed) {
-            // var putItem = await putData("Events", {
-            //   event_id: index.toString(),
-            //   creator: accounts[0],
-            //   date_event: edate,
-            //   date_sell: sdate,
-            //   detail: detail,
-            //   event_name: name,
-            //   limit: limit
-            // });
-            // console.log(putItem);
-            // var putPoster = uploadPic(bfP, index.toString()+'.png', 'poster');
-            // console.log(putPoster);
-            // var putSeat = uploadPic(bfS, index.toString()+'.png', '');
-            // console.log(putSeat);
-            // var seat_row = [];
-            // var seat_price = [];
-            // var seat_zone = [];
-            // for (var i = 0; i < number.length; i++) {
-            //   seat_row.push(Math.random().toString() + "|" + number[i].toString());
-            //   seat_price.push(Math.random().toString() + "|" + price[i].toString());
-            //   seat_zone.push(Math.random().toString() + "|" + zoneseat[i].toString());
-            // }
-            // var putTicket = await putData("Create_Seat", {
-            //   address: accounts[0],
-            //   event_id: index.toString(),
-            //   creator: accounts[0],
-            //   date_event: edate_e,
-            //   date_sell: sdate_e,
-            //   detail: detail,
-            //   event_name: name,
-            //   limit: limit,
-            //   price: seat_price,
-            //   seat_number: seat_row,
-            //   seat_row: seat_zone,
-            //   zone: zone
-            // });
-            // console.log(putTicket);
-            const params = [{
-                from: accounts[0],
-                to: process.env.REACT_APP_ACCOUNT,
-                value: ethers.utils.parseUnits(sent_price.toString(), "wei").toHexString()
-            }];
-        
-            const transactionHash = await provider.send('eth_sendTransaction', params)
-            console.log('transactionHash is ' + transactionHash);
-            // console.time('create NFT');
-            // for (var z = 0; z < zone.length; z++) {
-            //   for (var i = 65; i <= zoneseat[z].charCodeAt(0); i++) {
-            //     for (var n = 1; n <= number[z]; n++) {
-            //       var _priceGas = await provider.getGasPrice();
-            //       _priceGas = ethers.utils.formatUnits(_priceGas, "wei")
-            //       var wei_price = price[z] * 1000000000000000000
-            //       var _metadata = hash({
-            //           EventName: name, 
-            //           dateEvent: edate_e,
-            //           seat: zone[z] + "/" + String.fromCharCode(i) + n.toString(), 
-            //           price: wei_price, 
-            //           creater: accounts[0]
-            //       });
-            //       try {
-            //         var create_ticket = await contractMarket.create_sell(index, name, edate_e, sdate_e, zone[z], String.fromCharCode(i)+n.toString(), wei_price, _priceGas, limit, _metadata).then(async (re) => {
-            //           console.log(re)
-            //           alert("Your Created Transection: "+re.hash)
-            //           var hash = re.hash;
-            //           var get = await web3.eth.getTransactionReceipt(hash).then(getLog => {
-            //             console.log(getLog);
-            //           });
-            //           var putTicket = await putData("Seats", {
-            //             ticket_id: 1,
-            //             event_id: index.toString(),
-            //             gas: _priceGas / 1000000000000000000,
-            //             price: price[z],
-            //             seat_id: String.fromCharCode(i) + n.toString(),
-            //             seat_row: String.fromCharCode(i),
-            //             transection: hash,
-            //             zone: zone[z]
-            //           });
-            //           console.log(putTicket);
-            //         })
-            //       } catch (e) {
-            //         console.log(e)
-            //       }
-            //     }
-            //   }
-            // }
-            console.timeEnd('create NFT')
+            if (result.value.err === 0) {
+              Swal.fire('Create Event: '+ name + ' success', '', 'success')
+            } else {
+              Swal.fire('Error', result.value.msg, 'error')
+            }
           }
         })
       } else {
         alert("Plese fill all the information")
       }
-      // const client = create('https://ipfs.infura.io:5001/api/v0');
-      // if (name && sdate && edate && detail && zone.length > 0 && zoneseat.length > 0 && number.length > 0 && price.length > 0 && bfP && bfS) {
-      //   const created_image1 = await client.add(bfP).then(async (img1) => {
-      //     console.log(img1)
-      //     var img1_path = img1.path
-      //     var create_image2 = await client.add(bfS).then(async (img2) => {
-      //       console.log(img2)
-      //       var img2_path = img2.path
-      //       var create_event = await contractEvent.CreateEvent(name, sdate, edate, detail, zone, zoneseat, number, price, img1_path, img2_path).then(async (re) => {
-      //         console.log(re)
-      //         console.log("in: "+ img1_path + "||" + img2_path)
-      //         alert("Your Created Transection: "+re.hash)
-      //         var hash = re.hash;
-      //         var get = await web3.eth.getTransactionReceipt(hash).then(getLog => {
-      //           console.log(getLog);
-      //         });
-      //       })
-      //     })
-      //   });
-        
-      //   // var tx_account = await contractEvent.CreateEvent("Jesper", 20220713, "patcharapornsombat@gmail.com")
-      //   // console.log(tx_account.hash);
-      //   // await tx_account.wait();
-      //   // console.log(await this.isExistAccount())
-      // } else {
-      //   console.log("Not complete")
-      //   console.log(name)
-      //   console.log(sdate)
-      //   console.log(edate)
-      //   console.log(detail)
-      //   console.log(zone)
-      //   console.log(zoneseat)
-      //   console.log(number)
-      //   console.log(price)
-      //   console.log(bfP)
-      //   console.log(bfS)
-      // }
+      console.timeEnd('create Event')
     }
   }
-
-  // async getEvent() {
-  //   const web3 = new Web3(window.ethereum);
-    
-  //   // await provider.send("eth_requestAccounts", []);
-  //   var get = await web3.eth.getTransactionReceipt('0x70c680dae0256efa8b357e6d211becf5010d9895f14d3f69e33da03875981711').then(re => {
-  //     console.log(re);
-  //     console.log(re.logs[0].topics[1].toNumber());
-  //   });
-  //   console.log("event_emit");
-  // }
 
   setImageP(event) {
     // console.log(event)
