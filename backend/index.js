@@ -14,7 +14,13 @@ var con = mysql.createConnection({
     port     : process.env.RDS_PORT,
     database : process.env.RDS_DATABASE
 });
-
+con.connect((err) => {
+    if (err) {
+      console.log('error connecting: ' + err.stack);
+      return;
+    }
+    console.log('success');
+  });
 app.use(express.json())
 app.use(cors())
 app.use(bodyParser.urlencoded({ extended: false }))

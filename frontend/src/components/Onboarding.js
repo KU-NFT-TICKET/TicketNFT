@@ -1,6 +1,7 @@
 import React from 'react'
 import MetaMaskOnboarding from '@metamask/onboarding'
 import { ethers } from 'ethers'
+import axios from "axios"
 
 var hex_chainId = ethers.utils.hexValue(43113)
 // Avalanche Network information for automatic onboarding in MetaMask
@@ -34,7 +35,7 @@ const AVALANCHE_NETWORK_PARAMS = AVALANCHE_TESTNET_PARAMS
 // Check if the chain id is the selected Avalanche chain id
 const isAvalancheChain = (chainId) => (
   chainId &&
-  chainId.toLowerCase() === AVALANCHE_NETWORK_PARAMS.chainId.toLowerCase()
+  (chainId.toLowerCase() === AVALANCHE_NETWORK_PARAMS.chainId.toLowerCase() || chainId == 43113) 
 )
 
 export class OnboardingButton extends React.Component {
@@ -101,7 +102,12 @@ export class OnboardingButton extends React.Component {
         this.state.onboarding.stopOnboarding()
       }
     }
-
+    
+    if (this.state.chainId === null) {
+      const chainId = window.ethereum.networkVersion
+      this.setState({ chainId })
+    }
+    
     if (!MetaMaskOnboarding.isMetaMaskInstalled()) {
       // If MetaMask is not yet installed, ask the user to start the MetaMask onboarding process
       // (install the MetaMask browser extension).
