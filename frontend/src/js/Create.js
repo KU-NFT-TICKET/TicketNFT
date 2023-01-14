@@ -276,9 +276,6 @@ class Create extends React.Component {
       $("input[name=zoneseat]").val("")
       $("input[name=number]").val("")
       $("input[name=price]").val("")
-      // console.log(this.state.listzone)
-      // console.log(this.state.listnumber)
-      // console.log(this.state.listprice)
     }
 
   }
@@ -304,10 +301,6 @@ class Create extends React.Component {
       number: null,
       price: null
     })
-
-    // console.log(this.state.listzone)
-    // console.log(this.state.listnumber)
-    // console.log(this.state.listprice)
   }
 
   componentDidUpdate() {
@@ -319,9 +312,9 @@ class Create extends React.Component {
     const fileTypes = ["JPEG", "PNG", "GIF", "JPG"]
     return (
       <div>
-        <h2>Create Event</h2>
+        <h2 style={{color: 'snow'}}>Create Event</h2>
         <br/>
-        <form className="row g-3 needs-validation" noValidate >
+        <form className="row g-3 needs-validation form-style" noValidate >
           <div className="col-sm-6 box-create">
             <div className="mb-3 row">
               <label htmlFor="name" className="col-sm-2 col-form-label">Event Name:</label>

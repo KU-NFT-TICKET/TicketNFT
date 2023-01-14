@@ -51,16 +51,24 @@ class Home extends React.Component {
         let link = "/detail/"+data['event_id'];
         var url = "https://nft-event-picture.s3.ap-northeast-1.amazonaws.com/poster/"+data['event_id']+".png";
         html.push((
-          <div className="col-sm-3"><div className="card" style={{width: 18+'rem'}}>
-            <img src={url} className="card-img-top" alt="..." />
+          <div className="col-sm-3"><div className="card card-style">
+            <img src={url} className="card-img-top card-img" alt="..." />
             <div className="card-body">
               <h5 className="card-title">{data['event_name']}</h5>
               <p className="card-text">{data['date_sell']}</p>
-              <Link to={link}>
-                <button className="btn btn-primary">Click</button>
-              </Link>
+              <Link to={link}>click</Link>
             </div>
           </div></div>
+        ))
+      }
+      if (html.length === 0) {
+        html.push((
+          <div className="card mb-3 panel-style">
+            <div className="card-body">
+              <h5 className="card-title">Welcome to NFT Ticket</h5>
+              <p className="card-text">Try to create your first Event go to Create tab.</p>
+            </div>
+          </div>
         ))
       }
       this.setState({
@@ -120,10 +128,7 @@ class Home extends React.Component {
   render() {
     return (
       <div>
-        <h1>List all Event</h1>
-        {/* <button onClick={async () => {await this.setAccount();}}>click create account</button> */}
-        {/* <button onClick={async () => {await this.getAccount();}}>click get account</button> */}
-        {/* <div>{async () => await this.getOwnEvent()}</div> */}
+        <h1 style={{color: 'snow'}}>List all Event</h1>
         <div className="row">
           {this.state.htmlListEvent}
         </div>

@@ -40,7 +40,6 @@ app.get("/events", (req, res) => {
 			} else {
 				res.json(rows); 
 			}
-			console.log(' mysql_pool.release()');
 			connection.release();
 	    });
 	});
@@ -64,7 +63,6 @@ app.post("/select", (req, res) => {
 			} else {
 				res.json(rows); 
 			}
-			console.log(' mysql_pool.release()');
 			connection.release();
 	    });
 	});
@@ -89,7 +87,6 @@ app.post("/insert", (req, res) => {
 			} else {
 				res.json(rows); 
 			}
-			console.log(' mysql_pool.release()');
 			connection.release();
 	    });
 	});
