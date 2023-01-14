@@ -76,7 +76,7 @@ class Create extends React.Component {
       console.log("Need to Activate Account")
       alert("Need to Activate Account!!!")
     } else {
-      console.time('create Event');
+      
       var name = $("input[name=name]").val()
       var sdate = new Date(this.state.sdate).toISOString()
       var sdate_e = format(parseISO(sdate), 'yyyyMMddHHMMss')
@@ -108,16 +108,17 @@ class Create extends React.Component {
           confirmButtonText: 'Yes, Create Event!',
           showLoaderOnConfirm: true,
           preConfirm: async () => {
-            q = {query: "insert into Events (creator, date_event, date_sell, detail, event_name, purchase_limit) values (?, STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), ?, ?, ?)", 
-            bind: [accounts[0], edate, sdate, detail, name, limit]}
-            var putItem = await axios.post("http://localhost:8800/insert", q);
-            console.log(putItem);
+            console.time('create Event');
+            // q = {query: "insert into Events (creator, date_event, date_sell, detail, event_name, purchase_limit) values (?, STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), ?, ?, ?)", 
+            // bind: [accounts[0], edate, sdate, detail, name, limit]}
+            // var putItem = await axios.post("http://localhost:8800/insert", q);
+            // console.log(putItem);
+            var putItem = {data: {insertId: 4}}
             if (putItem.data.insertId !== undefined) {
-              var putPoster = uploadPic(bfP, putItem.data.insertId+'.png', 'poster');
-              console.log(putPoster);
-              var putSeat = uploadPic(bfS, putItem.data.insertId+'.png', '');
-              console.log(putSeat);
-            
+            //   var putPoster = uploadPic(bfP, putItem.data.insertId+'.png', 'poster');
+            //   console.log(putPoster);
+            //   var putSeat = uploadPic(bfS, putItem.data.insertId+'.png', '');
+            //   console.log(putSeat);
               for (var z = 0; z < zone.length; z++) {
                 for (var i = 65; i <= zoneseat[z].charCodeAt(0); i++) {
                   for (var n = 1; n <= number[z]; n++) {
@@ -132,8 +133,8 @@ class Create extends React.Component {
                         creater: accounts[0]
                     });
                     try {
-                      q = {query: "insert into Seats (event_id, gas, price, seat_id, seat_row, zone) values (?, ?, ?, ?, ?, ?)", 
-                      bind: [putItem.data.insertId, _priceGas, wei_price, n, String.fromCharCode(i), zone[z]]}
+                      q = {query: "insert into Seats (event_id, gas, price, seat_id, seat_row, zone, metadata, creator) values (?, ?, ?, ?, ?, ?, ?, ?)", 
+                      bind: [putItem.data.insertId, _priceGas, wei_price, n, String.fromCharCode(i), zone[z], _metadata, accounts[0]]}
                       var putTicket = await axios.post("http://localhost:8800/insert", q);
                       console.log(putTicket)
                     } catch (e) {
@@ -142,6 +143,7 @@ class Create extends React.Component {
                   }
                 }
               }
+              console.timeEnd('create Event')
               return {err: 0, msg: "insert success"}
             } else {
               alert("db error")
@@ -160,7 +162,7 @@ class Create extends React.Component {
       } else {
         alert("Plese fill all the information")
       }
-      console.timeEnd('create Event')
+      
     }
   }
 

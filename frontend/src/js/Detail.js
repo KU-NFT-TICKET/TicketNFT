@@ -1,6 +1,4 @@
 import React from "react";
-import ReactDOM from 'react-dom';
-import {useParams} from "react-router-dom";
 import { ethers } from 'ethers'
 import Web3 from 'web3';
 import $ from 'jquery';
@@ -19,6 +17,8 @@ import {Buffer} from 'buffer';
 import {scanData, getData, putData, queryData} from './dynamoDB';
 import {uploadPic} from './fileS3';
 import Swal from 'sweetalert2'
+import withRouter from './withRouter';
+import axios from "axios"
 
 import "react-datepicker/dist/react-datepicker.css";
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -32,7 +32,7 @@ import addressContract from '../contracts/addressContract';
 class Detail extends React.Component {
     constructor(props) {
       super(props)
-      let { id } = this.props.match.params.id;
+
       this.state = {
         zone: null,
         zoneseat: null,
@@ -50,7 +50,7 @@ class Detail extends React.Component {
         fileSeat: null,
         bufferP: null,
         bufferS: null,
-        id: id
+        id: this.props.params.id
       }
   
       this.baseState = this.state 
@@ -61,9 +61,44 @@ class Detail extends React.Component {
       this.setImageS = this.setImageS.bind(this)
       this.clearForm = this.clearForm.bind(this)
       this.handleSubmit = this.handleSubmit.bind(this)
-      // this.getEvent = this.getEvent.bind(this)
+      this.onConnected = this.onConnected.bind(this)
+    }
+
+    componentDidMount() {
+      this.onConnected()
     }
   
+    async onConnected() {
+      const provider = new ethers.providers.Web3Provider(window.ethereum)
+      await provider.send("eth_requestAccounts", []);
+      const accounts = await provider.listAccounts();
+
+      var data_detail = []
+      try {
+        var q = {query: "select event_id, event_name, DATE_FORMAT(date_sell, '%d %b %Y %T') as date_sell, DATE_FORMAT(date_event, '%d %b %Y %T') as date_event, detail, purchase_limit from Events where creator = ? and event_id = ?", 
+        bind: [accounts[0], this.state.id]}
+        const ownEvent = await axios.post("http://localhost:8800/select", q)
+        data_detail = ownEvent.data
+      } catch(err){
+        console.log(err)
+      }
+      var ticket_detail = []
+      try {
+        var q = {query: "select ticket_id, price, seat_id, seat_row, zone from Seats where creator = ? and event_id = ?", 
+        bind: [accounts[0], this.state.id]}
+        const ownTickett = await axios.post("http://localhost:8800/select", q)
+        ticket_detail = ownTickett.data
+      } catch(err){
+        console.log(err)
+      }
+
+      this.setState({
+        isConnected: true,
+        data_detail: data_detail,
+        ticket_detail: ticket_detail
+      })
+    }
+
     async handleSubmit() {
       const web3 = new Web3(window.ethereum);
       const provider = new ethers.providers.Web3Provider(window.ethereum)
@@ -121,43 +156,6 @@ class Detail extends React.Component {
             confirmButtonText: 'Yes, Create Event!'
           }).then(async (result) => {
             if (result.isConfirmed) {
-              // var putItem = await putData("Events", {
-              //   event_id: index.toString(),
-              //   creator: accounts[0],
-              //   date_event: edate,
-              //   date_sell: sdate,
-              //   detail: detail,
-              //   event_name: name,
-              //   limit: limit
-              // });
-              // console.log(putItem);
-              // var putPoster = uploadPic(bfP, index.toString()+'.png', 'poster');
-              // console.log(putPoster);
-              // var putSeat = uploadPic(bfS, index.toString()+'.png', '');
-              // console.log(putSeat);
-              // var seat_row = [];
-              // var seat_price = [];
-              // var seat_zone = [];
-              // for (var i = 0; i < number.length; i++) {
-              //   seat_row.push(Math.random().toString() + "|" + number[i].toString());
-              //   seat_price.push(Math.random().toString() + "|" + price[i].toString());
-              //   seat_zone.push(Math.random().toString() + "|" + zoneseat[i].toString());
-              // }
-              // var putTicket = await putData("Create_Seat", {
-              //   address: accounts[0],
-              //   event_id: index.toString(),
-              //   creator: accounts[0],
-              //   date_event: edate_e,
-              //   date_sell: sdate_e,
-              //   detail: detail,
-              //   event_name: name,
-              //   limit: limit,
-              //   price: seat_price,
-              //   seat_number: seat_row,
-              //   seat_row: seat_zone,
-              //   zone: zone
-              // });
-              // console.log(putTicket);
               const params = [{
                   from: accounts[0],
                   to: process.env.REACT_APP_ACCOUNT,
@@ -166,102 +164,14 @@ class Detail extends React.Component {
           
               const transactionHash = await provider.send('eth_sendTransaction', params)
               console.log('transactionHash is ' + transactionHash);
-              // console.time('create NFT');
-              // for (var z = 0; z < zone.length; z++) {
-              //   for (var i = 65; i <= zoneseat[z].charCodeAt(0); i++) {
-              //     for (var n = 1; n <= number[z]; n++) {
-              //       var _priceGas = await provider.getGasPrice();
-              //       _priceGas = ethers.utils.formatUnits(_priceGas, "wei")
-              //       var wei_price = price[z] * 1000000000000000000
-              //       var _metadata = hash({
-              //           EventName: name, 
-              //           dateEvent: edate_e,
-              //           seat: zone[z] + "/" + String.fromCharCode(i) + n.toString(), 
-              //           price: wei_price, 
-              //           creater: accounts[0]
-              //       });
-              //       try {
-              //         var create_ticket = await contractMarket.create_sell(index, name, edate_e, sdate_e, zone[z], String.fromCharCode(i)+n.toString(), wei_price, _priceGas, limit, _metadata).then(async (re) => {
-              //           console.log(re)
-              //           alert("Your Created Transection: "+re.hash)
-              //           var hash = re.hash;
-              //           var get = await web3.eth.getTransactionReceipt(hash).then(getLog => {
-              //             console.log(getLog);
-              //           });
-              //           var putTicket = await putData("Seats", {
-              //             ticket_id: 1,
-              //             event_id: index.toString(),
-              //             gas: _priceGas / 1000000000000000000,
-              //             price: price[z],
-              //             seat_id: String.fromCharCode(i) + n.toString(),
-              //             seat_row: String.fromCharCode(i),
-              //             transection: hash,
-              //             zone: zone[z]
-              //           });
-              //           console.log(putTicket);
-              //         })
-              //       } catch (e) {
-              //         console.log(e)
-              //       }
-              //     }
-              //   }
-              // }
               console.timeEnd('create NFT')
             }
           })
         } else {
           alert("Plese fill all the information")
         }
-        // const client = create('https://ipfs.infura.io:5001/api/v0');
-        // if (name && sdate && edate && detail && zone.length > 0 && zoneseat.length > 0 && number.length > 0 && price.length > 0 && bfP && bfS) {
-        //   const created_image1 = await client.add(bfP).then(async (img1) => {
-        //     console.log(img1)
-        //     var img1_path = img1.path
-        //     var create_image2 = await client.add(bfS).then(async (img2) => {
-        //       console.log(img2)
-        //       var img2_path = img2.path
-        //       var create_event = await contractEvent.CreateEvent(name, sdate, edate, detail, zone, zoneseat, number, price, img1_path, img2_path).then(async (re) => {
-        //         console.log(re)
-        //         console.log("in: "+ img1_path + "||" + img2_path)
-        //         alert("Your Created Transection: "+re.hash)
-        //         var hash = re.hash;
-        //         var get = await web3.eth.getTransactionReceipt(hash).then(getLog => {
-        //           console.log(getLog);
-        //         });
-        //       })
-        //     })
-        //   });
-          
-        //   // var tx_account = await contractEvent.CreateEvent("Jesper", 20220713, "patcharapornsombat@gmail.com")
-        //   // console.log(tx_account.hash);
-        //   // await tx_account.wait();
-        //   // console.log(await this.isExistAccount())
-        // } else {
-        //   console.log("Not complete")
-        //   console.log(name)
-        //   console.log(sdate)
-        //   console.log(edate)
-        //   console.log(detail)
-        //   console.log(zone)
-        //   console.log(zoneseat)
-        //   console.log(number)
-        //   console.log(price)
-        //   console.log(bfP)
-        //   console.log(bfS)
-        // }
       }
     }
-  
-    // async getEvent() {
-    //   const web3 = new Web3(window.ethereum);
-      
-    //   // await provider.send("eth_requestAccounts", []);
-    //   var get = await web3.eth.getTransactionReceipt('0x70c680dae0256efa8b357e6d211becf5010d9895f14d3f69e33da03875981711').then(re => {
-    //     console.log(re);
-    //     console.log(re.logs[0].topics[1].toNumber());
-    //   });
-    //   console.log("event_emit");
-    // }
   
     setImageP(event) {
       // console.log(event)
@@ -410,168 +320,173 @@ class Detail extends React.Component {
     }
   
     componentDidUpdate() {
-  
+      
     }
     
     render() {
       const {listzone, listzoneseat, listnumber, listprice} = this.state;
       const fileTypes = ["JPEG", "PNG", "GIF", "JPG"]
-      return (
-        <div>
-          <h2>Detail Event {this.state.id}</h2>
-          <br/>
-          <form className="row g-3 needs-validation" noValidate >
-            <div className="col-sm-6 box-create">
-              <div className="mb-3 row">
-                <label htmlFor="name" className="col-sm-2 col-form-label">Event Name:</label>
-                <div className="col-sm-10">
-                  <input type="text" className="form-control" id="name" name="name" />
-                </div>
-              </div>
-              <div className="mb-3 row">
-                <label htmlFor="des" className="col-sm-2 col-form-label">Description:</label>
-                <div className="col-sm-10">
-                  <textarea className="form-control" id="des" name="des" ></textarea>
-                </div>
-              </div>
-              <div className="mb-3 row">
-                <label htmlFor="limit" className="col-sm-2 col-form-label">User limit buy:</label>
-                <div className="col-sm-10">
-                  <input type="text" className="form-control" style={{width: 100+'px'}} onKeyPress={(event) => { if (!/[0-9 .]/.test(event.key)) { event.preventDefault(); }}} id="limit" name="limit" />
-                </div>
-              </div>
-              <div className="mb-3 row">
-                <label htmlFor="sdate" className="col-sm-2 col-form-label">Sell date:</label>
-                <div className="col-sm-4">
-                  <div className='form-group' id='sdate'>
-                  <DatePicker
-                    selected={this.state.sdate}
-                    onChange={(e)=> this.setState({sdate: e})}
-                    showTimeSelect
-                    dateFormat="MMM d, yyyy HH:mm"
-                    timeFormat="HH:mm"
-                    minDate={addDays(new Date(), 1)}
-                    name="sdate"
-                    className="form-control"
-                  />
+      console.log(this.state)
+      if (this.state.data_detail !== undefined) {
+        return (
+          <div>
+            <h2>{this.state.data_detail[0]['event_name']}</h2>
+            <br/>
+            <form className="row g-3 needs-validation" noValidate >
+              <div className="col-sm-6 box-create">
+                <div className="mb-3 row">
+                  <label htmlFor="name" className="col-sm-2 col-form-label">Event Name:</label>
+                  <div className="col-sm-10">
+                    <input type="text" className="form-control" id="name" name="name" />
                   </div>
                 </div>
-                <label htmlFor="edate" className="col-sm-2 col-form-label">Event date:</label>
-                <div className="col-sm-4">
-                  <div className='form-group' id='edate'>
-                  <DatePicker
-                    selected={this.state.edate}
-                    onChange={(e)=> this.setState({edate: e})}
-                    showTimeSelect
-                    dateFormat="MMM d, yyyy HH:mm"
-                    timeFormat="HH:mm"
-                    minDate={addDays(new Date(), 2)}
-                    name="edate"
-                    className="form-control"
-                  />
+                <div className="mb-3 row">
+                  <label htmlFor="des" className="col-sm-2 col-form-label">Description:</label>
+                  <div className="col-sm-10">
+                    <textarea className="form-control" id="des" name="des" ></textarea>
                   </div>
                 </div>
-              </div>
-            </div>
-            <div className="col-sm-5 box-create">
-              <div className="mb-3 row">
-                <div className="col-sm-10 row">
-                  <div className="col-sm-6 row">
-                    <div className="col-sm-3">
-                      <label htmlFor="zone" className="col-form-label">Zone:</label>
-                    </div>
-                    <div className="col-sm-9">
-                      <input type="text" className="form-control" id="zone" name="zone" value={this.state.zone} onChange={(e)=> this.setState({zone: e.target.value})} />
+                <div className="mb-3 row">
+                  <label htmlFor="limit" className="col-sm-2 col-form-label">User limit buy:</label>
+                  <div className="col-sm-10">
+                    <input type="text" className="form-control" style={{width: 100+'px'}} onKeyPress={(event) => { if (!/[0-9 .]/.test(event.key)) { event.preventDefault(); }}} id="limit" name="limit" />
+                  </div>
+                </div>
+                <div className="mb-3 row">
+                  <label htmlFor="sdate" className="col-sm-2 col-form-label">Sell date:</label>
+                  <div className="col-sm-4">
+                    <div className='form-group' id='sdate'>
+                    <DatePicker
+                      selected={this.state.sdate}
+                      onChange={(e)=> this.setState({sdate: e})}
+                      showTimeSelect
+                      dateFormat="MMM d, yyyy HH:mm"
+                      timeFormat="HH:mm"
+                      minDate={addDays(new Date(), 1)}
+                      name="sdate"
+                      className="form-control"
+                    />
                     </div>
                   </div>
-                  <div className="col-sm-6 row">
-                    <div className="col-sm-4">
-                      <label htmlFor="zoneseat" className="col-sm-2 col-form-label">Seat:</label>
-                    </div>
-                    <div className="col-sm-8">
-                      <input type="text" className="form-control" id="zoneseat" name="zoneseat" value={this.state.zoneseat} onChange={(e)=> this.setState({zoneseat: e.target.value})} />
+                  <label htmlFor="edate" className="col-sm-2 col-form-label">Event date:</label>
+                  <div className="col-sm-4">
+                    <div className='form-group' id='edate'>
+                    <DatePicker
+                      selected={this.state.edate}
+                      onChange={(e)=> this.setState({edate: e})}
+                      showTimeSelect
+                      dateFormat="MMM d, yyyy HH:mm"
+                      timeFormat="HH:mm"
+                      minDate={addDays(new Date(), 2)}
+                      name="edate"
+                      className="form-control"
+                    />
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="mb-3 row">
-                <div className="col-sm-10 row">
-                  <div className="col-sm-6 row">
-                    <div className="col-sm-3"><label htmlFor="number" className="col-form-label">No.:</label></div>
-                    <div className="col-sm-9">
-                      <input type="text" className="form-control" onKeyPress={(event) => { if (!/[0-9 .]/.test(event.key)) { event.preventDefault(); }}} id="number" name="number" value={this.state.number} onChange={(e)=> this.setState({number: e.target.value})} />
+              <div className="col-sm-5 box-create">
+                <div className="mb-3 row">
+                  <div className="col-sm-10 row">
+                    <div className="col-sm-6 row">
+                      <div className="col-sm-3">
+                        <label htmlFor="zone" className="col-form-label">Zone:</label>
+                      </div>
+                      <div className="col-sm-9">
+                        <input type="text" className="form-control" id="zone" name="zone" value={this.state.zone} onChange={(e)=> this.setState({zone: e.target.value})} />
+                      </div>
+                    </div>
+                    <div className="col-sm-6 row">
+                      <div className="col-sm-4">
+                        <label htmlFor="zoneseat" className="col-sm-2 col-form-label">Seat:</label>
+                      </div>
+                      <div className="col-sm-8">
+                        <input type="text" className="form-control" id="zoneseat" name="zoneseat" value={this.state.zoneseat} onChange={(e)=> this.setState({zoneseat: e.target.value})} />
+                      </div>
                     </div>
                   </div>
-                  <div className="col-sm-6 row">
-                  <div className="col-sm-4"><label htmlFor="price" className="col-sm-1 col-form-label">Price:</label></div>
-                    <div className="col-sm-8">
-                      <input type="text" className="form-control" id="price" onKeyPress={(event) => { if (!/[0-9 .]/.test(event.key)) { event.preventDefault(); }}} name="price" value={this.state.price} onChange={(e)=> this.setState({price: e.target.value})} />
+                </div>
+                <div className="mb-3 row">
+                  <div className="col-sm-10 row">
+                    <div className="col-sm-6 row">
+                      <div className="col-sm-3"><label htmlFor="number" className="col-form-label">No.:</label></div>
+                      <div className="col-sm-9">
+                        <input type="text" className="form-control" onKeyPress={(event) => { if (!/[0-9 .]/.test(event.key)) { event.preventDefault(); }}} id="number" name="number" value={this.state.number} onChange={(e)=> this.setState({number: e.target.value})} />
+                      </div>
+                    </div>
+                    <div className="col-sm-6 row">
+                    <div className="col-sm-4"><label htmlFor="price" className="col-sm-1 col-form-label">Price:</label></div>
+                      <div className="col-sm-8">
+                        <input type="text" className="form-control" id="price" onKeyPress={(event) => { if (!/[0-9 .]/.test(event.key)) { event.preventDefault(); }}} name="price" value={this.state.price} onChange={(e)=> this.setState({price: e.target.value})} />
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="col-sm-2">
-                  <FontAwesomeIcon onClick={this.addElement} icon={faCirclePlus} style={{cursor: "pointer", height: 20, marginTop: 10+'px'}} />
-                </div>
-              </div>
-              <hr/>
-              {listzone.map((val, key) => {
-                return (
-                  <div className="mb-3 row">
-                    <div className="col-sm-2">
-                      Zone: {val}
-                    </div>
-                    <div className="col-sm-3">
-                      ZoneSeat: {listzoneseat[key]} 
-                    </div>
-                    <div className="col-sm-2">
-                      Seat: {listnumber[key]} 
-                    </div>
-                    <div className="col-sm-3">
-                      Price: {listprice[key]} 
-                    </div>
-                    <div className="col-sm-2"><FontAwesomeIcon onClick={(e)=> this.removeElement(key)} icon={faCircleMinus} style={{cursor: "pointer", height: 20}} /></div>
+                  <div className="col-sm-2">
+                    <FontAwesomeIcon onClick={this.addElement} icon={faCirclePlus} style={{cursor: "pointer", height: 20, marginTop: 10+'px'}} />
                   </div>
-                )
-              })}
-                
-            </div>
-            <br/><br/>
-            <div className="row box-create">
-              <div className="col-sm-6">
-                <div className="dragdropimg">
-                  <h3>Drop Your Poster</h3>
-                  <FileUploader
-                    multiple={true}
-                    handleChange={this.setImageP}
-                    name="fileposter"
-                    types={fileTypes}
-                  />
-                  <p>{this.state.fp ? `File name: ${this.state.fp[0].name}` : "no files uploaded yet"}</p>
-                  <img src={this.state.filePoster} />
+                </div>
+                <hr/>
+                {listzone.map((val, key) => {
+                  return (
+                    <div className="mb-3 row">
+                      <div className="col-sm-2">
+                        Zone: {val}
+                      </div>
+                      <div className="col-sm-3">
+                        ZoneSeat: {listzoneseat[key]} 
+                      </div>
+                      <div className="col-sm-2">
+                        Seat: {listnumber[key]} 
+                      </div>
+                      <div className="col-sm-3">
+                        Price: {listprice[key]} 
+                      </div>
+                      <div className="col-sm-2"><FontAwesomeIcon onClick={(e)=> this.removeElement(key)} icon={faCircleMinus} style={{cursor: "pointer", height: 20}} /></div>
+                    </div>
+                  )
+                })}
+                  
+              </div>
+              <br/><br/>
+              <div className="row box-create">
+                <div className="col-sm-6">
+                  <div className="dragdropimg">
+                    <h3>Drop Your Poster</h3>
+                    <FileUploader
+                      multiple={true}
+                      handleChange={this.setImageP}
+                      name="fileposter"
+                      types={fileTypes}
+                    />
+                    <p>{this.state.fp ? `File name: ${this.state.fp[0].name}` : "no files uploaded yet"}</p>
+                    <img src={this.state.filePoster} />
+                  </div>
+                </div>
+                <div className="col-sm-6">
+                  <div className="dragdropimg">
+                    <h3>Drop Your Seat</h3>
+                    <FileUploader
+                      multiple={true}
+                      handleChange={this.setImageS}
+                      name="fileseat"
+                      types={fileTypes}
+                    />
+                    <p>{this.state.fs ? `File name: ${this.state.fs[0].name}` : "no files uploaded yet"}</p>
+                    <img src={this.state.fileSeat} />
+                  </div>
                 </div>
               </div>
-              <div className="col-sm-6">
-                <div className="dragdropimg">
-                  <h3>Drop Your Seat</h3>
-                  <FileUploader
-                    multiple={true}
-                    handleChange={this.setImageS}
-                    name="fileseat"
-                    types={fileTypes}
-                  />
-                  <p>{this.state.fs ? `File name: ${this.state.fs[0].name}` : "no files uploaded yet"}</p>
-                  <img src={this.state.fileSeat} />
-                </div>
+              <div className="row">
+                <div className="col-sm-2"><button type="button" onClick={this.clearForm} className="btn btn-primary">Clear</button></div>
+                <div className="offset-sm-8 col-sm-2"><button type="button" onClick={this.handleSubmit}  className="btn btn-success">Submit</button></div>
               </div>
-            </div>
-            <div className="row">
-              <div className="col-sm-2"><button type="button" onClick={this.clearForm} className="btn btn-primary">Clear</button></div>
-              <div className="offset-sm-8 col-sm-2"><button type="button" onClick={this.handleSubmit}  className="btn btn-success">Submit</button></div>
-            </div>
-          </form>
-        </div>
-      );
+            </form>
+          </div>
+        );
+      } else {
+        return <img src={require('../img/loading.gif')}/>
+      }
     }
   }
    
-  export default Detail;
+  export default withRouter(Detail);

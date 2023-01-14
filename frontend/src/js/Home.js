@@ -25,10 +25,6 @@ class Home extends React.Component {
       htmlListEvent: null
     }
     this.onConnected = this.onConnected.bind(this)
-    this.setAccount = this.setAccount.bind(this)
-    this.isExistAccount = this.isExistAccount.bind(this)
-    this.getOwnEvent = this.getOwnEvent.bind(this)
-    this.getDetailEvent = this.getDetailEvent.bind(this)
     this.setListEvent = this.setListEvent.bind(this)
 
     
@@ -56,7 +52,7 @@ class Home extends React.Component {
             <div className="card-body">
               <h5 className="card-title">{data['event_name']}</h5>
               <p className="card-text">{data['date_sell']}</p>
-              <Link to={link}>click</Link>
+              <Link to={{pathname: link, state: data['event_id']}}>click</Link>
             </div>
           </div></div>
         ))
@@ -94,35 +90,6 @@ class Home extends React.Component {
       this.setState({htmlListEvent: re})
     }
     console.log(this.state.htmlListEvent)
-  }
-
-  async setAccount() {
-    var tx_account = await this.state.contractAccount.createAccount("Jesper", 20220713, "patcharapornsombat@gmail.com")
-    console.log(tx_account.hash);
-    await tx_account.wait();
-    console.log(await this.isExistAccount())
-  }
-
-  async isExistAccount () {
-    var isexist = await this.state.contractAccount.isExistAccount()
-    console.log('contract Account: isExistAccount '+isexist)
-  }
-
-  async getAccount () {
-    var getaccount = await this.state.contractAccount.getAccountDetail()
-    console.log(getaccount)
-  }
-
-  async getOwnEvent () {
-    // console.log(this.state.contractEvent)
-    var getevent = await this.state.contractEvent.ListAllEventsOwn()
-    console.log("Own:" + getevent)
-    return getevent
-  }
-
-  async getDetailEvent (id) {
-    // console.log("id:" + id)
-    return await this.state.contractEvent.GetEvent(id)
   }
 
   render() {
