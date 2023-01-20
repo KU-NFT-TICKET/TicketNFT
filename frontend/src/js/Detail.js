@@ -3,7 +3,7 @@ import { ethers } from 'ethers'
 import Web3 from 'web3';
 import $ from 'jquery';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import {faPlus, faCirclePlus, faCircleMinus} from '@fortawesome/free-solid-svg-icons'
+import {faPlus, faCirclePlus, faCircleMinus, faCalendarDays, faLocationDot, faClock, faCalendarPlus, faCircleDollarToSlot } from '@fortawesome/free-solid-svg-icons'
 import DatePicker from 'react-datepicker';
 import setHours from "date-fns/setHours";
 import setMinutes from "date-fns/setMinutes";
@@ -62,6 +62,7 @@ class Detail extends React.Component {
       this.clearForm = this.clearForm.bind(this)
       this.handleSubmit = this.handleSubmit.bind(this)
       this.onConnected = this.onConnected.bind(this)
+      this.fileChangedHandler = this.fileChangedHandler.bind(this)
     }
 
     componentDidMount() {
@@ -73,12 +74,12 @@ class Detail extends React.Component {
       await provider.send("eth_requestAccounts", []);
       const accounts = await provider.listAccounts();
 
-      var data_detail = []
+      var data_detail = {}
       try {
-        var q = {query: "select event_id, event_name, DATE_FORMAT(date_sell, '%d %b %Y %T') as date_sell, DATE_FORMAT(date_event, '%d %b %Y %T') as date_event, detail, purchase_limit from Events where creator = ? and event_id = ?", 
+        var q = {query: "select event_id, event_name, date_format(date_sell, '%W %d %M %Y %H:%i') as show_date_sell, date_format(date_event, '%W %d %M %Y') as show_date_event, date_format(date_event, '%H:%i') as show_time_event, detail, purchase_limit, venue from Events where creator = ? and event_id = ?", 
         bind: [accounts[0], this.state.id]}
         const ownEvent = await axios.post("http://localhost:8800/select", q)
-        data_detail = ownEvent.data
+        data_detail = ownEvent.data[0]
       } catch(err){
         console.log(err)
       }
@@ -91,11 +92,33 @@ class Detail extends React.Component {
       } catch(err){
         console.log(err)
       }
+      var price_detail = []
+      try {
+        var q = {query: "select distinct ROUND(price/1000000000000000000, 2) as price from Seats where event_id = ? order by ROUND(price/1000000000000000000, 2) desc", 
+        bind: [this.state.id]}
+        const ownPrice = await axios.post("http://localhost:8800/select", q)
+        price_detail = ownPrice.data
+      } catch(err){
+        console.log(err)
+      }
+
+      var seat_count = {}
+      try {
+        var q = {query: "select count(*) seat_count from Seats where owner is null and event_id = ?", 
+        bind: [this.state.id]}
+        const ownPrice = await axios.post("http://localhost:8800/select", q)
+        seat_count = ownPrice.data[0]
+      } catch(err){
+        console.log(err)
+      }
+      
 
       this.setState({
         isConnected: true,
         data_detail: data_detail,
-        ticket_detail: ticket_detail
+        ticket_detail: ticket_detail,
+        price_detail: price_detail,
+        seat_count: seat_count
       })
     }
 
@@ -142,7 +165,6 @@ class Detail extends React.Component {
           var _priceGas = await provider.getGasPrice();
           var all_seat = 0;
           for (var z = 0; z <zone.length; z++){
-  
             all_seat += ((parseInt(zoneseat[z].charCodeAt(0)) - 65) + 1 ) * number[z];
           }
           var sent_price = _priceGas * all_seat;
@@ -318,19 +340,118 @@ class Detail extends React.Component {
       // console.log(this.state.listnumber)
       // console.log(this.state.listprice)
     }
-  
-    componentDidUpdate() {
-      
+
+    fileChangedHandler(event) {
+      console.log(event)
+      console.log("in")
+      var fileInput = false;
+      if (event.target.files[0]) {
+        fileInput = true;
+      }
+      if (fileInput) {
+        try {
+          Resizer.imageFileResizer(
+            event.target.files[0],
+            300,
+            300,
+            "JPEG",
+            100,
+            0,
+            (uri) => {
+              console.log(uri);
+              this.setState({ newImage: uri });
+            },
+            "base64",
+            200,
+            200
+          );
+        } catch (err) {
+          console.log(err);
+        }
+      }
     }
     
     render() {
       const {listzone, listzoneseat, listnumber, listprice} = this.state;
       const fileTypes = ["JPEG", "PNG", "GIF", "JPG"]
+      var imgurl =  "https://nft-event-picture.s3.ap-northeast-1.amazonaws.com/poster/"+this.state.id+".png"
       console.log(this.state)
-      if (this.state.data_detail !== undefined) {
+      
+      if (this.state.data_detail !== undefined && this.state.data_detail.event_name !== undefined && this.state.price_detail !== undefined) {
+        var price_detail = []
+        for (var i = 0; i < this.state.price_detail.length; i++) {
+          price_detail.push(this.state.price_detail[i]['price'])
+        }
+        var price_show = '~' + price_detail.join(', ~') + ' AVAX'
+        if (this.data_detail) {
+          // check status sell 
+        }
         return (
-          <div>
-            <h2>{this.state.data_detail[0]['event_name']}</h2>
+          <div style={{color: 'white'}}>
+            <br/>
+            <div className="row">
+              <div className="col-sm-8" style={{'text-align': 'left'}}>
+                <h1>{this.state.data_detail.event_name}</h1>
+                <span>{this.state.data_detail.detail}</span>
+                <div className="row">
+                  <div className="col-sm-6">
+                    <ul className="event-ul">
+                      <li className="row">
+                        <div className="col-sm-1"><FontAwesomeIcon icon={faCalendarDays} style={{height: 20, marginTop: 10+'px'}}/></div>
+                        <div className="col-sm-11">
+                          <small>Show Date</small>
+                          <div>{this.state.data_detail.show_date_event}</div>
+                        </div>
+                      </li>
+                      <li className="row">
+                        <div className="col-sm-1"><FontAwesomeIcon icon={faLocationDot} style={{height: 20, marginTop: 10+'px'}}/></div>
+                          <div className="col-sm-11">
+                          <small>Venue</small>
+                          <div>{this.state.data_detail.venue}</div>
+                        </div>
+                      </li>
+                      <li className="row">
+                        <div className="col-sm-1"><FontAwesomeIcon icon={faClock} style={{height: 20, marginTop: 10+'px'}}/></div>
+                          <div className="col-sm-11">
+                          <small>Show Time</small>
+                          <div>{this.state.data_detail.show_time_event}</div>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="col-sm-6">
+                  <ul className="event-ul">
+                      <li className="row">
+                        <div className="col-sm-1"><FontAwesomeIcon icon={faCalendarPlus} style={{height: 20, marginTop: 10+'px'}}/></div>
+                        <div className="col-sm-11">
+                          <small>Public Sale</small>
+                          <div>{this.state.data_detail.show_date_sell}</div>
+                        </div>
+                      </li>
+                      <li className="row">
+                        <div className="col-sm-1"><FontAwesomeIcon icon={faCircleDollarToSlot} style={{height: 20, marginTop: 10+'px'}}/></div>
+                          <div className="col-sm-11">
+                          <small>Ticket Price</small>
+                          <div>{price_show}</div>
+                        </div>
+                      </li>
+                      <li className="row">
+                        <div className="col-sm-1"><FontAwesomeIcon icon={faClock} style={{height: 20, marginTop: 10+'px'}}/></div>
+                          <div className="col-sm-11">
+                          <small>Ticket Status</small>
+                          <div>{this.state.data_detail.show_time_event}</div>
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div className="col-sm-4">
+                <div style={{"background-image": "url("+imgurl+")", 
+                "background-size": "contain","width": "100%","height": 300+"px","background-repeat": 'no-repeat'}}></div>
+              </div>
+            </div>
+
             <br/>
             <form className="row g-3 needs-validation" noValidate >
               <div className="col-sm-6 box-create">

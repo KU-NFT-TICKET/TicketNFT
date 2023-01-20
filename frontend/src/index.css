@@ -34,3 +34,12 @@ code {
   padding: 20px;
   border-radius: 20px;
 }
+
+.event-ul {
+  list-style:none;
+}
+
+.event-li-p {
+  flex: 1 1 auto;
+  margin: 0;
+}
