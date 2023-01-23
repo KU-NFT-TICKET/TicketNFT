@@ -95,7 +95,7 @@ class Home extends React.Component {
   render() {
     return (
       <div>
-        <h1 style={{color: 'snow'}}>List all Event</h1>
+        <h1 style={{color: 'snow'}}>ALL EVENT</h1>
         <div className="row">
           {this.state.htmlListEvent}
         </div>

@@ -91,12 +91,11 @@ class Create extends React.Component {
       var price = this.state.listprice
       var bfP = this.state.bufferP
       var bfS = this.state.bufferS
-      var filePoster = this.state.filePoster
-      var fileSeat = this.state.fileSeat
-
+      // var filePoster = this.state.filePoster
+      // var fileSeat = this.state.fileSeat
       var limit = $("input[name=limit]").val()
-      // var index = countItems.Count + 1;
-      if (name && sdate && edate && detail && zone.length > 0 && zoneseat.length > 0 && number.length > 0 && price.length > 0 && bfP && bfS) {
+      var venue = $("input[name=venue]").val()
+      if (name && sdate && edate && detail && venue && limit && zone.length > 0 && zoneseat.length > 0 && number.length > 0 && price.length > 0 && bfP && bfS) {
         var all_seat = 0;
         for (var z = 0; z <zone.length; z++){
           all_seat += ((parseInt(zoneseat[z].charCodeAt(0)) - 65) + 1 ) * number[z];
@@ -112,40 +111,40 @@ class Create extends React.Component {
           showLoaderOnConfirm: true,
           preConfirm: async () => {
             console.time('create Event');
-            // q = {query: "insert into Events (creator, date_event, date_sell, detail, event_name, purchase_limit) values (?, STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), ?, ?, ?)", 
-            // bind: [accounts[0], edate, sdate, detail, name, limit]}
-            // var putItem = await axios.post("http://localhost:8800/insert", q);
-            // console.log(putItem);
-            var putItem = {data: {insertId: 10}}
+            q = {query: "insert into Events (creator, date_event, date_sell, detail, event_name, purchase_limit, venue) values (?, STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), ?, ?, ?, ?)", 
+            bind: [accounts[0], edate, sdate, detail, name, limit, venue]}
+            var putItem = await axios.post("http://localhost:8800/insert", q);
+            console.log(putItem);
+            // var putItem = {data: {insertId: 10}}
             if (putItem.data.insertId !== undefined) {
-              var putPoster = uploadPic(filePoster, putItem.data.insertId+'.png', 'poster');
+              var putPoster = uploadPic(bfP, putItem.data.insertId+'.png', 'poster');
               console.log(putPoster);
-              var putSeat = uploadPic(fileSeat, putItem.data.insertId+'.png', '');
+              var putSeat = uploadPic(bfS, putItem.data.insertId+'.png', '');
               console.log(putSeat);
-              // for (var z = 0; z < zone.length; z++) {
-              //   for (var i = 65; i <= zoneseat[z].charCodeAt(0); i++) {
-              //     for (var n = 1; n <= number[z]; n++) {
-              //       var _priceGas = await provider.getGasPrice();
-              //       _priceGas = ethers.utils.formatUnits(_priceGas, "wei")
-              //       var wei_price = price[z] * 1000000000000000000
-              //       var _metadata = hash({
-              //           EventName: name, 
-              //           dateEvent: edate_e,
-              //           seat: zone[z] + "/" + String.fromCharCode(i) + n.toString(), 
-              //           price: wei_price, 
-              //           creater: accounts[0]
-              //       });
-              //       try {
-              //         q = {query: "insert into Seats (event_id, gas, price, seat_id, seat_row, zone, metadata, creator) values (?, ?, ?, ?, ?, ?, ?, ?)", 
-              //         bind: [putItem.data.insertId, _priceGas, wei_price, n, String.fromCharCode(i), zone[z], _metadata, accounts[0]]}
-              //         var putTicket = await axios.post("http://localhost:8800/insert", q);
-              //         console.log(putTicket)
-              //       } catch (e) {
-              //         console.log(e)
-              //       }
-              //     }
-              //   }
-              // }
+              for (var z = 0; z < zone.length; z++) {
+                for (var i = 65; i <= zoneseat[z].charCodeAt(0); i++) {
+                  for (var n = 1; n <= number[z]; n++) {
+                    var _priceGas = await provider.getGasPrice();
+                    _priceGas = ethers.utils.formatUnits(_priceGas, "wei")
+                    var wei_price = price[z] * 1000000000000000000
+                    var _metadata = hash({
+                        EventName: name, 
+                        dateEvent: edate_e,
+                        seat: zone[z] + "/" + String.fromCharCode(i) + n.toString(), 
+                        price: wei_price, 
+                        creater: accounts[0]
+                    });
+                    try {
+                      q = {query: "insert into Seats (event_id, gas, price, seat_id, seat_row, zone, metadata, creator) values (?, ?, ?, ?, ?, ?, ?, ?)", 
+                      bind: [putItem.data.insertId, _priceGas, wei_price, n, String.fromCharCode(i), zone[z], _metadata, accounts[0]]}
+                      var putTicket = await axios.post("http://localhost:8800/insert", q);
+                      console.log(putTicket)
+                    } catch (e) {
+                      console.log(e)
+                    }
+                  }
+                }
+              }
               console.timeEnd('create Event')
               return {err: 0, msg: "insert success"}
             } else {
@@ -188,7 +187,7 @@ class Create extends React.Component {
           event[0],
           300,
           300,
-          "JPEG",
+          "PNG",
           100,
           0,
           (uri) => {
@@ -222,7 +221,7 @@ class Create extends React.Component {
           event[0],
           300,
           300,
-          "JPEG",
+          "PNG",
           100,
           0,
           (uri) => {
@@ -369,6 +368,12 @@ class Create extends React.Component {
                   className="form-control"
                 />
                 </div>
+              </div>
+            </div>
+            <div className="mb-3 row">
+              <label htmlFor="venue" className="col-sm-2 col-form-label">Venue:</label>
+              <div className="col-sm-10">
+                <input type="text" className="form-control" id="venue" name="venue"/>
               </div>
             </div>
           </div>

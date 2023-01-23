@@ -83,6 +83,7 @@ app.post("/insert", (req, res) => {
 				data["Time"] = (new Date()).getTime();
 				data["DatabaseStatus"] = "Down";
                 data["err"] = err2;
+				console.log(err2)
 				res.json(data); 
 			} else {
 				res.json(rows); 
