@@ -54,12 +54,24 @@ class Detail extends React.Component {
       this.handleSubmit = this.handleSubmit.bind(this)
       this.onConnected = this.onConnected.bind(this)
       this.deleteEvent = this.deleteEvent.bind(this)
+      this.seat_check = this.seat_check.bind(this)
     }
 
     componentDidMount() {
       this.onConnected()
     }
-  
+    
+    seat_check(event) {
+      var is_ck = $(event.target).is(':checked')
+      if (is_ck) {
+        $(event.target).parent().children("label").children("div").hide()
+        $(event.target).parent().children("label").children("img").show()
+      } else {
+        $(event.target).parent().children("label").children("div").show()
+        $(event.target).parent().children("label").children("img").hide()
+      }
+    }
+
     async onConnected() {
       const provider = new ethers.providers.Web3Provider(window.ethereum)
       await provider.send("eth_requestAccounts", []);
@@ -75,11 +87,69 @@ class Detail extends React.Component {
         console.log(err)
       }
       var ticket_detail = []
+      var holdseathtml = []
       try {
-        var q = {query: "select ticket_id, price, seat_id, seat_row, zone from Seats where creator = ? and event_id = ?", 
+        var q = {query: "select ticket_id, price, seat_id, seat_row, zone from Seats where creator = ? and event_id = ? order by zone, seat_row, seat_id", 
         bind: [accounts[0], this.state.id]}
         const ownTickett = await axios.post("http://localhost:8800/select", q)
         ticket_detail = ownTickett.data
+        var z = ''
+        var s = ''
+        var head = []
+        var row = []
+        var body = []
+        var col = []
+        for (var i = 0; i < ticket_detail.length; i++) {
+          if (z !== ticket_detail[i].zone) {
+            if (z !== '') {
+              row.push((<tr zone={z}><td>{z+s}</td>{col}<td>{z+s}</td></tr>))
+              body.push((<div className="tab-pane fade show scrollbar" id={z} role="tabpanel" aria-labelledby="pills-home-tab" tabindex="0">
+                          <table className="table table-borderless tableseat">
+                            {row}
+                          </table>
+                        </div>))
+              row = []
+              col = []
+              s = ''
+              console.log(body)
+            }
+            z = ticket_detail[i].zone
+            head.push((<li className="nav-item" role="presentation"><button id={z+'_tab'} className="nav-link" data-bs-toggle="pill" data-bs-target={'#'+z} type="button" role="tab" aria-controls={z} aria-expanded="false">Zone: {z}</button></li>))
+          } 
+          if (s !== ticket_detail[i].seat_row) {
+            if (s !== '') {
+              row.push((<tr zone={z}><td>{z+s}</td>{col}<td>{z+s}</td></tr>))
+              col = []
+            }
+            s = ticket_detail[i].seat_row
+          }
+          var s_id = z+''+s+''+ticket_detail[i].ticket_id
+          var l_id = 'key:'+z+''+s+''+ticket_detail[i].ticket_id
+          col.push((<td>
+                  <input className="seat-check" onChange={this.seat_check} name="hold[]" type="checkbox" id={s_id} value={ticket_detail[i].ticket_id}/>
+                  <label id={l_id} for={s_id}>
+                    <div className="label-seat">{ticket_detail[i].seat_id}</div>
+                    <img className="label-seat seat-img-check" src={require('../img/Sign-check-icon.png')} style={{'display': 'none'}}/>
+                  </label>
+                </td>))
+        }
+        row.push((<tr zone={z}><td>{z+s}</td>{col}<td>{z+s}</td></tr>))
+        body.push((<div className="tab-pane fade show scrollbar" id={z} role="tabpanel" aria-labelledby="pills-home-tab" tabindex="0">
+                          <table className="table table-borderless tableseat">
+                            {row}
+                          </table>
+                        </div>))
+        holdseathtml.push((
+          <ul className="nav nav-pills mb-3" style={{'marginTop': '5px'}} id="pills-tab" role="tablist">
+            {head}
+          </ul>
+        ))
+        holdseathtml.push((
+          <div className="tab-content" id="pills-tabContent">
+            {body}
+          </div>
+        ))
+        console.log(holdseathtml)
       } catch(err){
         console.log(err)
       }
@@ -112,6 +182,7 @@ class Detail extends React.Component {
         seat_count: seat_count,
         sdate: new Date(data_detail.date_sell),
         edate: new Date(data_detail.date_event),
+        holdseathtml: holdseathtml
       })
     }
     
@@ -139,20 +210,30 @@ class Detail extends React.Component {
           confirmButtonText: 'Yes, Delete Event!',
           showLoaderOnConfirm: true,
           preConfirm: async () => {
-            var q = {query: "delete from Hold_transfer where event_id = ?", 
-            bind: [this.state.id]}
-            var delHold = await axios.post("http://localhost:8800/insert", q);
-            console.log(delHold);
+            try {
+              var q = {query: "delete from Hold_transfer where event_id = ?", 
+              bind: [this.state.id]}
+              var delHold = await axios.post("http://localhost:8800/insert", q);
+              console.log(delHold);
 
-            var q = {query: "delete from Seats where event_id = ?", 
-            bind: [this.state.id]}
-            var delHold = await axios.post("http://localhost:8800/insert", q);
-            console.log(delHold);
+              var q = {query: "delete from Seats where event_id = ?", 
+              bind: [this.state.id]}
+              var delHold = await axios.post("http://localhost:8800/insert", q);
+              console.log(delHold);
 
-            var q = {query: "delete from Events where event_id = ?", 
-            bind: [this.state.id]}
-            var delHold = await axios.post("http://localhost:8800/insert", q);
-            console.log(delHold);
+              var q = {query: "delete from Events where event_id = ?", 
+              bind: [this.state.id]}
+              var delHold = await axios.post("http://localhost:8800/insert", q);
+              console.log(delHold);
+
+              var delPoster = deletePic(this.state.id+'.png', 'poster');
+              console.log(delPoster);
+              var delSeat = deletePic(this.state.id+'.png', '');
+              console.log(delSeat);
+              return {err: 0, msg: 'Delete success'}
+            } catch (err) {
+              return {err: 1, msg: err}
+            }
           }
         }).then(async (result) => {
           if (result.isConfirmed) {
@@ -613,11 +694,12 @@ class Detail extends React.Component {
                   </form>
                 </div>
                 <div className="tab-pane fade" id="ticket-tab-pane" role="tabpanel" aria-labelledby="ticket-tab" tabIndex="0">
-
+                  <div style={{'backgroundColor': 'black'}}>
+                    {this.state.holdseathtml}
+                  </div>
                 </div>
               </div>
             </div>
-            
           </div>
         );
       } else {

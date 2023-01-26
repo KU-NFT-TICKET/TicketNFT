@@ -2,10 +2,12 @@ import express from "express"
 import mysql from "mysql"
 import cors from "cors"
 import bodyParser from "body-parser";
-import * as dotenv from 'dotenv'
+// import * as dotenv from 'dotenv'
+import dotenv from 'dotenv'
 dotenv.config()
 const app = express()
 
+console.log(process.env.RDS_HOSTNAME)
 
 var mysql_pool = mysql.createPool({
     host     : process.env.RDS_HOSTNAME,

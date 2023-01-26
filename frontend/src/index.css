@@ -80,3 +80,50 @@ code {
 .small-color{
   color: darkgray;
 }
+
+.tableseat {
+  border-collapse: inherit;
+  border-spacing: 3px;
+}
+
+.tableseat td {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  -moz-border-radius: 50%;
+  -webkit-border-radius: 50%;
+  overflow: hidden;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 0 2px rgb(0 0 0 / 80%), 1px 1px 3px rgb(0 0 0 / 80%);
+  position: relative;
+  z-index: 1;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.tableseat .label-seat:hover {
+  transform: scale(1.5);
+  cursor: pointer;
+}
+
+.seat-img-check {
+  background-repeat: no-repeat;
+  width: 30px;
+  height: 28px;
+}
+
+.label-seat {
+  border-radius: 50%;
+  background-color: #ff99bb;
+  width: 30px;
+  height: 28px;
+}
+
+.seat-check{
+  display: none;
+}
+
+.scrollbar{
+  overflow: auto;
+}

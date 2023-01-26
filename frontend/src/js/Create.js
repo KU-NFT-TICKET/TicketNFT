@@ -23,10 +23,6 @@ import axios from "axios"
 import "react-datepicker/dist/react-datepicker.css";
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-// Import contract address and artifact
-import contractTicketPlace from '../contracts/TicketMarketplace.json'
-import addressContract from '../contracts/addressContract';
-
 var hash = require('object-hash');
 
 class Create extends React.Component {
@@ -156,6 +152,7 @@ class Create extends React.Component {
           if (result.isConfirmed) {
             if (result.value.err === 0) {
               Swal.fire('Create Event: '+ name + ' success', '', 'success')
+              window.location.assign("/#");
             } else {
               Swal.fire('Error', result.value.msg, 'error')
             }

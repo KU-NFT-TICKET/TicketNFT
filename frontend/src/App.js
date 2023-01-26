@@ -6,8 +6,7 @@ import {
   Route,
   NavLink,
   HashRouter,
-  Routes,
-  useParams
+  Routes
 } from "react-router-dom";
 import 'bootstrap/dist/js/bootstrap.bundle';
 
