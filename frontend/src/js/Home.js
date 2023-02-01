@@ -18,9 +18,6 @@ class Home extends React.Component {
 
     this.state = {
       isConnected: false,
-      contractMaket: null,
-      contractAccount: null, 
-      contractEvent: null,
       ownEvent: null,
       htmlListEvent: null
     }

@@ -65,7 +65,7 @@ class Create extends React.Component {
     await provider.send("eth_requestAccounts", []);
     const accounts = await provider.listAccounts();
 
-    var q = {query: "select * from Accounts where address = ? and remove_date is null", bind: [accounts[0]]}
+    var q = {query: "select * from Accounts where address = ? and removed_date is null", bind: [accounts[0]]}
     const detailAccount = await axios.post("http://localhost:8800/select", q);
 
     if(!detailAccount.data) {

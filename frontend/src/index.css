@@ -127,3 +127,13 @@ code {
 .scrollbar{
   overflow: auto;
 }
+
+.bg-black {
+  background-color: black;
+}
+
+.search_user{
+  padding: 2%;
+  margin: auto;
+  width: 40%;
+}
