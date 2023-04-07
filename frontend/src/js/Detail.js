@@ -18,6 +18,7 @@ import Swal from 'sweetalert2'
 import withRouter from './withRouter';
 import axios from "axios"
 import Select from 'react-select'
+import CryptoJS from 'crypto-js'
 import "react-datepicker/dist/react-datepicker.css";
 import 'bootstrap/dist/css/bootstrap.min.css';
 
@@ -51,14 +52,138 @@ class Detail extends React.Component {
     this.actionHold = this.actionHold.bind(this)
     this.actionTransfer = this.actionTransfer.bind(this)
     this.searchUser =this.searchUser.bind(this)
+    this.encode_thaiID = this.encode_thaiID.bind(this)
+    this.decode_thaiID = this.decode_thaiID.bind(this)
+    this.getKeyAndIV = this.getKeyAndIV.bind(this)
   }
 
   componentDidMount() {
     this.onConnected()
   }
 
-  searchUser(event) {
+  getKeyAndIV(password) {
 
+    var keyBitLength = 256;
+    var ivBitLength = 128;
+    var iterations = 234;
+
+    var bytesInSalt = 128 / 8;
+    var salt = CryptoJS.lib.WordArray.random(bytesInSalt);
+
+    var iv128Bits = CryptoJS.PBKDF2(password, salt, { keySize: 128 / 32, iterations: iterations });
+    var key256Bits = CryptoJS.PBKDF2(password, salt, { keySize: 256 / 32, iterations: iterations });
+
+    return {
+        iv: iv128Bits,
+        key: key256Bits
+    };
+};
+
+  searchUser(event) {
+    var card = $("input[name='id_card']").val()
+    var ck = false
+    var body = []
+    var html = []
+    const key = '0xf93dd1044015b2ddd42c7e2d9c674b04f2846781';
+    const keyutf = CryptoJS.enc.Utf8.parse(key);
+    const iv = CryptoJS.enc.Base64.parse(key);
+    // const enc = CryptoJS.AES.encrypt("1100900480936", keyutf, { iv: iv });
+    // const encStr = enc.toString();
+
+    // console.log('encStr', encStr);
+    // console.log('pass', keyutf)
+    // console.log('decStr', this.decode_thaiID(encStr, keyutf, iv))
+    var text = "1100900480936";
+    var skey = this.getKeyAndIV(key);
+    var data = CryptoJS.AES.encrypt(text, skey.key, { iv: skey.iv })
+    var dataText = data.ciphertext.toString(CryptoJS.enc.Base64)
+    console.log(data)
+    console.log(dataText)
+    var params = {
+      ciphertext: CryptoJS.enc.Base64.parse(dataText),
+      salt: ""
+    };
+    var clearText = CryptoJS.AES.decrypt(params, key, { iv: iv })
+    console.log(clearText.toString(CryptoJS.enc.Utf8))
+    // var encryptedCP = CryptoJS.AES.encrypt(text, key, { iv: iv });
+    // var decryptedWA = CryptoJS.AES.decrypt(encryptedCP, key, { iv: iv});
+    // var cryptText = encryptedCP.toString();
+    // console.log('encryptedCP', encryptedCP);
+    // console.log('cryptText', cryptText);
+    // console.log('decryptedWA', decryptedWA.toString(CryptoJS.enc.Utf8));
+
+    //Decode from text    
+    // var cipherParams = CryptoJS.lib.CipherParams.create({
+    //     ciphertext: CryptoJS.enc.Base64.parse(cryptText )
+    // });
+    // var strHexWA = (CryptoJS.lib.WordArray.create(new Uint8Array(cryptText)));
+    // console.log('cipherParams', strHexWA)
+    // var decryptedFromText = CryptoJS.AES.decrypt(strHexWA, key, { iv: iv});
+    // console.log('decryptedFromText', decryptedFromText.toString(CryptoJS.enc.Utf8));
+    // var encrypted = CryptoJS.AES.encrypt("1100900480936", keyutf, {keySize: 128 / 8,
+    // iv: iv,
+    // mode: CryptoJS.mode.CBC,
+    // padding: CryptoJS.pad.Pkcs7});
+    // console.log(encrypted)
+    // console.log(encrypted.ciphertext.toString(CryptoJS.enc.Base64))
+    // // var decrypted = CryptoJS.TripleDES.decrypt(encrypted, key);
+    // var params = {
+    //   ciphertext: encrypted.ciphertext.toString(CryptoJS.enc.Base64),
+    //   salt: ""
+    // };
+    // var decrypted = CryptoJS.AES.decrypt(params, keyutf,
+    //   {
+    //       keySize: 128 / 8,
+    //       iv: iv,
+    //       mode: CryptoJS.mode.CBC,
+    //       padding: CryptoJS.pad.Pkcs7
+    //   }).toString(CryptoJS.enc.Utf8)
+    // console.log(decrypted)
+    // for (var i = 0; i < this.state.address.length; i++){
+    //   console.log(card)
+    //   console.log(this.state.address[i])
+    //   var index = this.encode_thaiID(card, this.state.address[i])
+    //   console.log(index)
+    //   console.log(this.state.use_list[index])
+    //   if ( this.state.use_list[index].length > 0 ) {
+    //     var _ticlet = this.state.use_list[index]
+    //     ck = true
+    //     for (var j = 0; j < _ticlet.length; j++) {
+    //       body.push(
+    //         <div className="card col-sm-3" style={{"width": "18rem"}}>
+    //           <div className="card-body">
+    //             <h5 className="card-title">Zone: {_ticlet[j].zone}</h5>
+    //             <h6 className="card-subtitle mb-2 text-muted">Row: {_ticlet[j].seat_row}</h6>
+    //             <h1 className="card-text txt-center">{_ticlet[j].zone+_ticlet[j].seat_row+_ticlet[j].seat_id}</h1>
+    //           </div>
+    //         </div>
+    //       )
+    //     }
+    //     break
+    //   }
+    //   if (ck) {
+    //     console.log("this id card have ticket for this event")
+    //     html.push(<div className="row">{body}</div>)
+    //   } else {
+    //     console.log("this id card don't have ticket for this event")
+    //     Swal.fire('This Id card don\'t have ticket in this event', '', 'warning')
+    //   }
+    // }
+  }
+
+  encode_thaiID(thai_id, address) {
+    const passphrase = address
+    return CryptoJS.AES.encrypt(thai_id, passphrase).toString()
+  }
+
+  decode_thaiID(ciphertext, address, iv) {
+    var cipherParams = CryptoJS.lib.CipherParams.create({
+          ciphertext: CryptoJS.enc.Base64.parse(ciphertext)
+    });
+    const passphrase = address;
+    const bytes = CryptoJS.AES.decrypt(cipherParams, passphrase, { iv: iv });
+    const originalText = bytes.toString(CryptoJS.enc.Utf8);
+    return originalText;
   }
 
   actionTransfer(event) {
@@ -303,7 +428,6 @@ class Detail extends React.Component {
       for (var i = 0; i < user_app.length; i++) {
         options.push({ value: user_app[i].address, label: user_app[i].username })
       }
-      console.log(options)
       var q = {
         query: "select h.ticket_id, h.reciever, s.zone, s.seat_row, s.seat_id, a.username from Hold_transfer h join Seats s on (h.ticket_id = s.ticket_id) left join Accounts a on (h.reciever = a.address) where h.event_id = ? and a.removed_date is null order by h.ticket_id",
         bind: [this.state.id]
@@ -388,7 +512,7 @@ class Detail extends React.Component {
     var use_list = {}
     try {
       var q = {
-        query: "select s.ticket_id, s.seat_id, s.seat_row, s.zone, s.owner, a.thai_id from Seats s left join Accounts a on (s.owner = a.address) where event_id = ? and creator = ? order by s.zone, s.seat_row, s.seat_id",
+        query: "select s.ticket_id, s.seat_id, s.seat_row, s.zone, s.owner, a.thai_id from Seats s left join Accounts a on (s.owner = a.address) where s.event_id = ? and s.creator = ? and s.transaction is not null order by s.zone, s.seat_row, s.seat_id",
         bind: [this.state.id, accounts[0]]
       }
       const ownSeatUse = await axios.post("http://localhost:8800/select", q)
@@ -670,7 +794,7 @@ class Detail extends React.Component {
       var price_show = '~' + price_detail.join(', ~') + ' AVAX'
       var status_event = ''
       var status_txt = ''
-      var show_edit = ''
+      var show_edit = false
       var display = {}
       var display_trans = {}
       if (date_ob >= new Date(this.state.data_detail.date_event)) {
@@ -682,7 +806,7 @@ class Detail extends React.Component {
             // ticket on sell
             status_event = 'status-event status-on'
             status_txt = 'ON SELL'
-            show_edit = 'disabled'
+            show_edit = true
             display = { 'display': 'none' }
           } else {
             status_event = 'status-event status-hold'
@@ -691,13 +815,13 @@ class Detail extends React.Component {
         } else {
           status_event = 'status-event status-off'
           status_txt = 'SOLD OUT'
-          show_edit = 'disabled'
+          show_edit = true
           display = { 'display': 'none' }
         }
       } else {
         status_event = 'status-event status-off'
         status_txt = 'EVENT CLOSE'
-        show_edit = 'disabled'
+        show_edit = true
         display = { 'display': 'none' }
       }
       return (
@@ -914,11 +1038,11 @@ class Detail extends React.Component {
                 <div className="search_user">
                   <form>
                     <div className="input-group">
-                      <input type="text" className="form-control" id="id_card" placeholder="ID Card..." />
+                      <input type="text" className="form-control" name="id_card" id="id_card" placeholder="ID Card..." />
                     </div>
                     <br/>
                     <div>
-                      <button type="button" onClick={this.searchUser} className="btn btn-primary">Submit</button>
+                      <button type="button" onClick={this.searchUser} className="btn btn-primary">Search...</button>
                     </div>
                   </form>
                 </div>

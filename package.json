@@ -1,20 +1,44 @@
 {
   "dependencies": {
+    "@avalabs/avalanche-wallet-sdk": "^0.19.1",
     "@fortawesome/fontawesome-svg-core": "^6.1.2",
     "@metamask/onboarding": "^1.0.1",
-    "@openzeppelin/contracts": "^4.7.3",
-    "@truffle/hdwallet-provider": "^2.0.14",
+    "@openzeppelin/contracts": "^4.8.1",
+    "@truffle/hdwallet-provider": "^2.1.6",
+    "@web3auth/base": "^5.0.1",
+    "@web3auth/modal": "^5.0.1",
+    "avalanche": "^3.16.0",
     "aws-sdk": "^2.1269.0",
-    "dotenv": "^16.0.1",
+    "dotenv": "^16.0.3",
     "dynamodb-doc": "^1.0.0",
     "ethereum-waffle": "^3.4.4",
     "ethers": "^5.6.9",
-    "hardhat": "^2.10.0",
-    "truffle": "^5.6.8",
+    "hardhat": "^2.12.6",
+    "truffle": "^5.7.5",
     "truffle-contract-size": "^2.0.1"
   },
   "devDependencies": {
     "@openzeppelin/test-helpers": "^0.5.15",
     "solidity-coverage": "^0.7.21"
-  }
+  },
+  "name": "project_nft",
+  "version": "2.0.0",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JesperBerben/TicketNFT.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JesperBerben/TicketNFT/issues"
+  },
+  "homepage": "https://github.com/JesperBerben/TicketNFT#readme",
+  "description": ""
 }

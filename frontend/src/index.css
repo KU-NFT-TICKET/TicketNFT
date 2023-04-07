@@ -137,3 +137,7 @@ code {
   margin: auto;
   width: 40%;
 }
+
+.txt-center {
+  text-align: center;
+}

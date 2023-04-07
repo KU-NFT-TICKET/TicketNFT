@@ -1,14 +1,22 @@
 const Marketplace = artifacts.require('./TicketMarketplace')
-const { expectRevert, BN } = require('@openzeppelin/test-helpers')
+const { expectRevert, BN } = require('@openzeppelin/test-helpers');
+const assert = require('assert');
 const { convertTokensToWei } = require('../utils/tokens')
 const { toBN } = web3.utils;
+const fs = require('fs');
 
-contract('TicketMarketplace', ([contractDeployer, creator, buyer, secondBuyer]) => {
+contract('TicketMarketplace', (account) => {
     let marketplace;
 
     before(async () => {
-        marketplace = await Marketplace.new({ from: contractDeployer })
+        marketplace = await Marketplace.new({ from: account[0] })
     });
+
+    // console.log('contractDeployer: ', contractDeployer)
+    // console.log('owner: ', owner)
+    // console.log('creator: ', creator)
+    // console.log('buyer: ', buyer)
+    // console.log('secondBuyer: ', secondBuyer)
 
     describe('marketplace + NFT deployment', async () => {
         it('Deploys the Marketplace + NFT  SC successfully.', async () => {
@@ -27,16 +35,50 @@ contract('TicketMarketplace', ([contractDeployer, creator, buyer, secondBuyer]) 
         })
     })
 
+    // describe('gas use', async () => {
+    //     it('Loop Mint a NFT', async () => {
+            // var j = 1
+            // creator = account[0]
+            // const result = await marketplace.createTicket(1, 1, 'event', [202303011800, 202302011000, 202302071215], 'A', 'A1', convertTokensToWei('1'), 10000, 'metadata', account[0], true, { from: creator})
+            // const gasUsed = result.receipt.gasUsed;
+            // console.log(`GasUsed: ${result.receipt.gasUsed}`);
+
+            // // Obtain gasPrice from the transaction
+            // const tx = await web3.eth.getTransaction(result.tx);
+            // const gasPrice = tx.gasPrice;
+            // console.log(`GasPrice: ${tx.gasPrice}`);
+            // for(var i = 0; i < 1; i++) {
+            //     if (i%600 == 0) {
+            //         j = j + 1
+            //         creator = account[j]
+            //     }
+                // const result = await marketplace.createTicket(i, 1, 'event', [202303011800, 202302011000, 202302071215], 'A', 'A'+i, convertTokensToWei('1'), 10000, 'metadata'+i, account[0], true, { from: creator})
+                // console.log(result)
+                // console.log(result['receipt']['gasUsed'])
+                // fs.appendFile(__dirname + "/message.txt", result['receipt']['gasUsed']);
+            // }
+        // })
+        // it('Check Quota of buy ticket.', async () => {
+        //     const UserLimit = await marketplace.UserLimit(creator, 1)
+        //     console.log(UserLimit)
+        //     console.log(UserLimit.toNumber())
+        // })
+    // })
+
     describe('Mint an NFT.', async () => {
         it('The hash \'metadata\' is not minted before the function call.', async () => {
             const hasBeenMinted = await marketplace.hasBeenMinted('metadata')
             assert.equal(hasBeenMinted, false, 'The hash \'metadata\' has not been minted, so it should be false.')
         })
 
-        it('Mint a NFT and emit events.', async () => {
-            const result = await marketplace.MintTicket(1, 'event', 202212201800, 'A', 'A1', convertTokensToWei('1'), convertTokensToWei('0.5'), 4, 'metadata', creator, { from: creator })
+        it('Mint a NFT with not sell date', async () => {
+            await expectRevert(marketplace.createTicket(1, 1, 'event', [202303011800, 202302011000, 202301071215], 'A', 'A1', convertTokensToWei('1'), 4, 'metadata', owner, true, { from: creator }), 'This Ticket is not for sell yet');
+        })
+
+        it('Mint a NFT and emit events with hold ticket.', async () => {
+            const result = await marketplace.createTicket(1, 1, 'event', [202303011800, 202302011000, 202302071215], 'A', 'A1', convertTokensToWei('1'), 4, 'metadata', owner, true, { from: creator })
             assert.equal(result.logs.length, 2, 'Should trigger two events.');
-            // console.log(result.logs[0].args.tokenId.valueOf());
+            console.log(result);
         
             assert.equal(result.logs[0].event, 'Transfer', 'Should be the \'Transfer\' event.');
             assert.equal(result.logs[0].args.from, 0x0, 'Should be the 0x0 address.');
@@ -50,9 +92,23 @@ contract('TicketMarketplace', ([contractDeployer, creator, buyer, secondBuyer]) 
             assert.equal(result.logs[1].args.creator, creator, 'Should log the creator.');
             assert.equal(result.logs[1].args.metadata, 'metadata', 'Should log the metadata correctly.');
             
+            const ownerBefore = await web3.eth.getBalance(owner)
+            console.log('ownerBefore: ', ownerBefore)
+            const creatorBefore = await web3.eth.getBalance(creator)
+            console.log('creatorBefore: ', creatorBefore)
+
             // create another ticket
-            const result1 = await marketplace.MintTicket(1, 'event', 202212201800, 'A', 'A2', convertTokensToWei('1'), convertTokensToWei('0.5'), 4, 'metadata1', creator, { from: creator })
-            assert.equal(result1.logs.length, 2, 'Should trigger two events.');
+            const result1 = await marketplace.createTicket(2, 1, 'event', [202303011800, 202302011000, 202302071215], 'A', 'A2', convertTokensToWei('1'), 4, 'metadata1', owner, false, { from: creator, value: convertTokensToWei('1') })
+            assert.equal(result1.logs.length, 2, 'Should trigger three events.');
+            console.log(result1);
+            const ownerAfter = await web3.eth.getBalance(owner)
+            console.log('ownerAfter: ', ownerAfter)
+            const creatorAfter = await web3.eth.getBalance(creator)
+            console.log('creatorAfter: ', creatorAfter)
+
+            // transfer avax
+            assert.equal(parseInt(ownerBefore)+parseInt(convertTokensToWei('1')), ownerAfter, 'Owner should get 1 Avax')
+
             //event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
             assert.equal(result1.logs[0].event, 'Transfer', 'Should be the \'Transfer\' event.');
             assert.equal(result1.logs[0].args.from, 0x0, 'Should be the 0x0 address.');
@@ -69,37 +125,27 @@ contract('TicketMarketplace', ([contractDeployer, creator, buyer, secondBuyer]) 
 
         it('The new item has the correct data.', async () => {
             const item = await marketplace.getTicket(1);
-            // console.log(item);
             assert.notEqual(item.creator, buyer, 'The buyer should not be the creator.')
             assert.equal(item.EvntID, 1, 'Event ID should be the \'1\'.')
             assert.equal(item.EventName, 'event', 'Event name should be the \'event\'.')
-            assert.equal(parseInt(item.dateEvent.toString()), '202212201800', 'dateEvent should be the \'202202011800\'.')
+            assert.equal(parseInt(item.dateEvent.toString()), '202303011800', 'dateEvent should be the \'202303011800\'.')
             assert.equal(item.zone, 'A', 'Zone should be the \'A\'.')
             assert.equal(item.seat, 'A1', 'Seat should be the \'A1\'.')
             assert.equal(item.owner, creator, 'The creator should be the Onwer.')
             assert.equal(item.creator, creator, 'The creator is the creator.')
             assert.equal(parseInt(item.priceSeat.toString()), convertTokensToWei('1'), 'Price should be the "'+convertTokensToWei('1')+'" wei.')
-            assert.equal(parseInt(item.priceGas.toString()), convertTokensToWei('0.5'), 'Gas should be the "'+convertTokensToWei('0.5')+'" wei.')
-            assert.equal(item.IsUse, false, 'Isuse should be \'false\'.')
-            assert.equal(parseInt(item.limit.toString()), 4, 'Limit should be the \'4\' .')
             assert.equal(item.metadata, 'metadata', 'Metadata should be \'metadata\'.')
         })
 
         it('Check if hash has been minted and that you cannot mint the same hash again.', async () => {
             const hasBeenMinted = await marketplace.hasBeenMinted('metadata')
             assert.equal(hasBeenMinted, true, 'The hash \'metadata\' has been minted.')
-            await expectRevert(marketplace.MintTicket(1, 'event', 202212201800, 'A', 'A1', convertTokensToWei('1'), convertTokensToWei('0.5'), 4, 'metadata', creator, { from: creator }), 'This metadata has already been used to mint an NFT.');
+            await expectRevert(marketplace.createTicket(1, 1, 'event', [202303011800, 202302011000, 202302071215], 'A', 'A3', convertTokensToWei('1'), 4, 'metadata', owner, true, { from: creator }), 'This metadata has already been used to mint an NFT.');
         })
 
-        it('Check if Not Owner use Ticket.', async () => {
-            await expectRevert(marketplace.useTicket(1, { from: buyer }), 'You are not Owner of this Ticket')
-        })
-
-        it('Check Owner use Ticket.', async () => {
-            const useTicket = await marketplace.useTicket(1, { from: creator })
-            const afteruse = await marketplace.getTicket(1)
-            assert.equal(afteruse['9'], true, 'The Ticket has been used.')
-
+        it('Check Quota of buy ticket.', async () => {
+            const UserLimit = await marketplace.UserLimit(creator, 1)
+            assert.equal(UserLimit, 1, 'User limit should = 1.')
         })
 
     })
@@ -111,37 +157,31 @@ contract('TicketMarketplace', ([contractDeployer, creator, buyer, secondBuyer]) 
         })
 
         it('The NFT with token id 2 cannot be listed by anyone who doesn\'t own it.', async () => {
-            await expectRevert(marketplace.addProduct(2, convertTokensToWei('1'), convertTokensToWei('0.5'), 202212011000, true, { from: contractDeployer }), 'Only the owner of the Ticket can call this function.');
-            await expectRevert(marketplace.addProduct(2, convertTokensToWei('1'), convertTokensToWei('0.5'), 202212011000, true, { from: buyer }), 'Only the owner of the Ticket can call this function.');
+            await expectRevert(marketplace.addProduct(2, convertTokensToWei('1.2'), convertTokensToWei('0.0005'), { from: contractDeployer }), 'Only the owner of the Ticket can call this function.');
+            await expectRevert(marketplace.addProduct(2, convertTokensToWei('1.2'), convertTokensToWei('0.0005'), { from: buyer }), 'Only the owner of the Ticket can call this function.');
         })
 
         it('Transfer the NFT to the Marketplace SC.', async () => {
-            const result = await marketplace.addProduct(2, convertTokensToWei('1'), convertTokensToWei('0.5'), 202212011000, true, { from: creator })
-            assert.equal(result.logs.length, 3, 'Should trigger three events.');
-
-            //event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
-            assert.equal(result.logs[0].event, 'Approval', 'Should be the \'Approval\' event.');
-            assert.equal(result.logs[0].args.owner, creator, 'Should be the creator address.');
-            assert.equal(result.logs[0].args.approved, 0x0, 'Should log the address(0) to approve in order to clear previous approvals.');
-            assert.equal(result.logs[0].args.tokenId, 2, 'Should log the token id which is 2.');
+            const result = await marketplace.addProduct(2, convertTokensToWei('1.2'), convertTokensToWei('0.0005'), { from: creator })
+            assert.equal(result.logs.length, 2, 'Should trigger two events.');
 
             //event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
-            assert.equal(result.logs[1].event, 'Transfer', 'Should be the \'Transfer\' event.');
-            assert.equal(result.logs[1].args.from, creator, 'Should be the creator address.');
-            assert.equal(result.logs[1].args.to, marketplace.address, 'Should log the recipient which is the marketplace.');
-            assert.equal(result.logs[1].args.tokenId, 2, 'Should log the token id which is 2.');
+            assert.equal(result.logs[0].event, 'Transfer', 'Should be the \'Transfer\' event.');
+            assert.equal(result.logs[0].args.from, creator, 'Should be the creator address.');
+            assert.equal(result.logs[0].args.to, marketplace.address, 'Should log the recipient which is the marketplace.');
+            assert.equal(result.logs[0].args.tokenId, 2, 'Should log the token id which is 2.');
 
             //event event addedProduct(uint256 indexed ticketId, uint price, address indexed seller);
-            assert.equal(result.logs[2].event, 'addedProduct', 'Should be the \'addedProduct\' event.');
-            assert.equal(result.logs[2].args.ticketId, 2, 'Should be the token id 1.');
-            assert.equal(result.logs[2].args.price, convertTokensToWei('1'), 'Should log the price which is 5 AVAX.');
-            assert.equal(result.logs[2].args.seller, creator, 'Should log the creator as the seller.');
+            assert.equal(result.logs[1].event, 'addedProduct', 'Should be the \'addedProduct\' event.');
+            assert.equal(result.logs[1].args.ticketId, 2, 'Should be the token id 1.');
+            assert.equal(result.logs[1].args.price, convertTokensToWei('1.2'), 'Should log the price which is 1.2 AVAX.');
+            assert.equal(result.logs[1].args.seller, creator, 'Should log the creator as the seller.');
         })
 
         it('The listing has the correct data.', async () => {
             const listing = await marketplace.getProdust(2)
-            assert.equal(listing[0], convertTokensToWei('1'), 'The price is 1 AVAX.')
-            assert.equal(listing[1], convertTokensToWei('0.5'), 'The gas is 0.5 Avax.')
+            assert.equal(listing[0], convertTokensToWei('1.2'), 'The price is 1.2 AVAX.')
+            assert.equal(listing[1], convertTokensToWei('0.0005'), 'The gas is 0.0005 Avax.')
         })  
 
         it('The Marketplace SC is now the owner of the NFT and not the seller.', async () => {
@@ -160,40 +200,13 @@ contract('TicketMarketplace', ([contractDeployer, creator, buyer, secondBuyer]) 
             assert.equal(hasBeenListed, true, 'The NFT with token id 2 has been listed.')
         })
 
-        it('The Ticket add to hold with not owner.', async () => {
-            await expectRevert(marketplace.addholdProduct([2], { from: buyer}), 'Only the address that has listed the Ticket can hold or cancel the listing.');
-        })
-
-        it('The Ticket add to hold with owner.', async () => {
-            const result = await marketplace.addholdProduct([2], { from: creator});
-        })
-
-        it('The Ticket 2 add to hold SC.', async () => {
-            const hasBeenHold = await marketplace.hasBeenHold(2)
-            assert.equal(hasBeenHold, true, 'The NFT with token id 2 has been hold.')
-        })
-
-        it('The hold Ticket tranfer to recipe by not owner.', async () => {
-            await expectRevert(marketplace.transferHoldProduct([2], buyer, { from: buyer}), 'Only the address that has listed the Ticket can hold or cancel the listing.');
-        })
-
-        it('The hold Ticket tranfer to recipe by owner.', async () => {
-            const result = await marketplace.transferHoldProduct([2], buyer, { from: creator })
-            const ownerOfNFT = await marketplace.ownerOf(2)
-            assert.equal(ownerOfNFT, buyer, 'The owner should be the buyer.');
-            assert.notEqual(ownerOfNFT, creator, 'The owner should not be the creator.');
-        })
-
     })
 
     describe('Create and add Ticket to Market Place.', async () => {
-        it('create ticket with old metadata .', async () => {
-            await expectRevert(marketplace.create_sell(1, 'event', 202212201800, 202212011000, 'A', 'A3', convertTokensToWei('1'), convertTokensToWei('0.5'), 4, 'metadata', { from: contractDeployer }), 'This metadata has already been used to mint an NFT.');
-        })
-
-        it('create ticket and add to market place .', async () => {
-            const result = await marketplace.create_sell(1, 'event', 202212201800, 202212011000, 'A', 'A3', convertTokensToWei('1'), convertTokensToWei('0.5'), 4, 'metadata3', { from: creator })
-            assert.equal(result.logs.length, 5, 'Should trigger five events.');
+        it('create ticket.', async () => {
+            const result = await marketplace.createTicket(3, 1, 'event', [202303011800, 202302011000, 202302091215], 'A', 'A3', convertTokensToWei('1'), 4, 'metadata3', owner, false, { from: creator, value: convertTokensToWei('1') })
+            console.log(result);
+            assert.equal(result.logs.length, 2, 'Should trigger five events.');
             //event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
             assert.equal(result.logs[0].event, 'Transfer', 'Should be the \'Transfer\' event.');
             assert.equal(result.logs[0].args.from, 0x0, 'Should be the 0x0 address.');
@@ -206,55 +219,50 @@ contract('TicketMarketplace', ([contractDeployer, creator, buyer, secondBuyer]) 
             assert.equal(result.logs[1].args.EventID, 1, 'Should be the token id 1.');
             assert.equal(result.logs[1].args.creator, creator, 'Should log the creator.');
             assert.equal(result.logs[1].args.metadata, 'metadata3', 'Should log the metadata3 correctly.');
+        })
 
-            //event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
-            assert.equal(result.logs[2].event, 'Approval', 'Should be the \'Approval\' event.');
-            assert.equal(result.logs[2].args.owner, creator, 'Should be the creator address.');
-            assert.equal(result.logs[2].args.approved, 0x0, 'Should log the address(0) to approve in order to clear previous approvals.');
-            assert.equal(result.logs[2].args.tokenId, 3, 'Should log the token id which is 3.');
+        it('add ticket to market place.', async () => {
+            const result = await marketplace.addProduct(3, convertTokensToWei('1.2'), convertTokensToWei('0.0005'), { from: creator })
+            assert.equal(result.logs.length, 2, 'Should trigger two events.');
 
             //event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
-            assert.equal(result.logs[3].event, 'Transfer', 'Should be the \'Transfer\' event.');
-            assert.equal(result.logs[3].args.from, creator, 'Should be the creator address.');
-            assert.equal(result.logs[3].args.to, marketplace.address, 'Should log the recipient which is the marketplace.');
-            assert.equal(result.logs[3].args.tokenId, 3, 'Should log the token id which is 3.');
+            assert.equal(result.logs[0].event, 'Transfer', 'Should be the \'Transfer\' event.');
+            assert.equal(result.logs[0].args.from, creator, 'Should be the creator address.');
+            assert.equal(result.logs[0].args.to, marketplace.address, 'Should log the recipient which is the marketplace.');
+            assert.equal(result.logs[0].args.tokenId, 3, 'Should log the token id which is 2.');
 
             //event event addedProduct(uint256 indexed ticketId, uint price, address indexed seller);
-            assert.equal(result.logs[4].event, 'addedProduct', 'Should be the \'addedProduct\' event.');
-            assert.equal(result.logs[4].args.ticketId, 3, 'Should be the token id 3.');
-            assert.equal(result.logs[4].args.price, convertTokensToWei('1'), 'Should log the price which is 1 AVAX.');
-            assert.equal(result.logs[4].args.seller, creator, 'Should log the creator as the seller.');
+            assert.equal(result.logs[1].event, 'addedProduct', 'Should be the \'addedProduct\' event.');
+            assert.equal(result.logs[1].args.ticketId, 3, 'Should be the token id 1.');
+            assert.equal(result.logs[1].args.price, convertTokensToWei('1.2'), 'Should log the price which is 1.2 AVAX.');
+            assert.equal(result.logs[1].args.seller, creator, 'Should log the creator as the seller.');
         })
 
         it('The new item from market place has the correct data.', async () => {
             const item = await marketplace.getTicket(3)
-            // console.log(item);
             assert.notEqual(item.creator, buyer, 'The buyer should not be the creator.')
             assert.equal(item.EvntID, 1, 'Event ID should be the \'1\'.')
             assert.equal(item.EventName, 'event', 'Event name should be the \'event\'.')
-            assert.equal(parseInt(item.dateEvent.toString()), 202212201800, 'dateEvent should be the \'202202011800\'.')
+            assert.equal(parseInt(item.dateEvent.toString()), 202303011800, 'dateEvent should be the \'202202011800\'.')
             assert.equal(item.zone, 'A', 'Zone should be the \'A\'.')
-            assert.equal(item.seat, 'A3', 'Seat should be the \'A1\'.')
+            assert.equal(item.seat, 'A3', 'Seat should be the \'A3\'.')
             assert.equal(item.owner, creator, 'The creator should be the Onwer.')
             assert.equal(item.creator, creator, 'The creator is the creator.')
             assert.equal(parseInt(item.priceSeat.toString()), convertTokensToWei('1'), 'Price should be the "'+convertTokensToWei('1')+'" wei.')
-            assert.equal(parseInt(item.priceGas.toString()), convertTokensToWei('0.5'), 'Gas should be the "'+convertTokensToWei('0.5')+'" wei.')
-            assert.equal(item.IsUse, false, 'Isuse should be \'false\'.')
-            assert.equal(parseInt(item.limit.toString()), 4, 'Limit should be the \'4\' .')
             assert.equal(item.metadata, 'metadata3', 'Metadata should be \'metadata3\'.')
+        })
+
+        it('The new item have correct data in market place.', async () => {
+            const item = await marketplace.getProdust(3)
+            assert.equal(parseInt(item[0].toString()), convertTokensToWei('1.2'), 'Price should be the "'+convertTokensToWei('1.2')+'" wei.')
+            assert.equal(parseInt(item[1].toString()), convertTokensToWei('0.0005'), 'Price should be the "'+convertTokensToWei('0.0005')+'" wei.')
         })
 
         it('Check if hash has been minted and that you cannot mint the same hash again.', async () => {
             const hasBeenMinted = await marketplace.hasBeenMinted('metadata3')
             assert.equal(hasBeenMinted, true, 'The hash \'metadata3\' has been minted.')
-            await expectRevert(marketplace.MintTicket(1, 'event', 202212201800, 'A', 'A4', convertTokensToWei('1'), convertTokensToWei('0.5'), 4, 'metadata3', creator, { from: creator }), 'This metadata has already been used to mint an NFT.');
+            await expectRevert(marketplace.createTicket(4, 1, 'event', [202303011800, 202302011000, 202302071215], 'A', 'A3', convertTokensToWei('1'), 4, 'metadata3', owner, true, { from: creator }), 'This metadata has already been used to mint an NFT.');
         })
-
-        it('The listing has the correct data.', async () => {
-            const listing = await marketplace.getProdust(3)
-            assert.equal(listing[0], convertTokensToWei('1'), 'The price is 1 AVAX.')
-            assert.equal(listing[1], convertTokensToWei('0.5'), 'The gas is 0.5 Avax.')
-        })  
 
         it('The Marketplace SC is now the owner of the NFT and not the seller.', async () => {
             const ownerOfNFT = await marketplace.ownerOf(3)
@@ -271,155 +279,142 @@ contract('TicketMarketplace', ([contractDeployer, creator, buyer, secondBuyer]) 
             const hasBeenListed = await marketplace.hasBeenListed(3)
             assert.equal(hasBeenListed, true, 'The NFT with token id 3 has been listed.')
         })
+
+        it('Get Listing data in market place.', async () => {
+            const listing = await marketplace.getListing()
+            assert.equal(listing.length, 2, 'Should trigger two ticket.');
+            assert.equal(listing[0], 2, 'First ticket should be 2.');
+            assert.equal(listing[1], 3, 'Second ticket should be 3.');
+        })
     })
 
-    // describe('Cancel the listing.', async () => {
-    //     it('The Product cannot be cancelled by an address that does not have the right to claim it.', async () => {
-    //         await expectRevert(marketplace.cancelProduct(3, { from: contractDeployer }), 'Only the address that has listed the Ticket can hold or cancel the listing.');
-    //         await expectRevert(marketplace.cancelProduct(3, { from: buyer }), 'Only the address that has listed the Ticket can hold or cancel the listing.');
-    //     })
+    describe('Cancel the listing.', async () => {
+        it('The Product cannot be cancelled by an address that does not have the right to claim it.', async () => {
+            await expectRevert(marketplace.cancelProduct(3, { from: contractDeployer }), 'Only the address that has listed the Ticket can hold or cancel the listing.');
+            await expectRevert(marketplace.cancelProduct(3, { from: buyer }), 'Only the address that has listed the Ticket can hold or cancel the listing.');
+        })
 
-    //     it('Transfer the NFT back to the owner.', async () => {
-    //         const result = await marketplace.cancelProduct(3, { from: creator })
-    //         assert.equal(result.logs.length, 3, 'Should trigger three events.');
+        it('Transfer the NFT back to the owner.', async () => {
+            const result = await marketplace.cancelProduct(3, { from: creator })
+            assert.equal(result.logs.length, 2, 'Should trigger three events.');
 
-    //         //event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
-    //         assert.equal(result.logs[0].event, 'Approval', 'Should be the \'Approval\' event.');
-    //         assert.equal(result.logs[0].args.owner, marketplace.address, 'Should be the marketplace address.');
-    //         assert.equal(result.logs[0].args.approved, 0x0, 'Should log the address(0) to approve in order to clear previous approvals.');
-    //         assert.equal(result.logs[0].args.tokenId, 3, 'Should log the token id which is 3.');
+            //event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+            assert.equal(result.logs[0].event, 'Transfer', 'Should be the \'Transfer\' event.');
+            assert.equal(result.logs[0].args.from, marketplace.address, 'Should be the marketplace address.');
+            assert.equal(result.logs[0].args.to, creator, 'Should log the recipient that is the creator.');
+            assert.equal(result.logs[0].args.tokenId, 3, 'Should log the token id which is 3.');
 
-    //         //event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
-    //         assert.equal(result.logs[1].event, 'Transfer', 'Should be the \'Transfer\' event.');
-    //         assert.equal(result.logs[1].args.from, marketplace.address, 'Should be the marketplace address.');
-    //         assert.equal(result.logs[1].args.to, creator, 'Should log the recipient that is the creator.');
-    //         assert.equal(result.logs[1].args.tokenId, 3, 'Should log the token id which is 3.');
+            //event event ListingCancelled(uint256 tokenId, uint256 price, address seller);
+            assert.equal(result.logs[1].event, 'cancelSell', 'Should be the \'cancelSell\' event.');
+            assert.equal(result.logs[1].args.ticketId, 3, 'Should be the token id 3.');
+            assert.equal(result.logs[1].args.price, convertTokensToWei('1.2'), 'Should log the price which is 1.2 AVAX.');
+            assert.equal(result.logs[1].args.seller, creator, 'Should log the creator as the one who cancels the listing.');
+        })
 
-    //         //event event ListingCancelled(uint256 tokenId, uint256 price, address seller);
-    //         assert.equal(result.logs[2].event, 'cancelSell', 'Should be the \'cancelSell\' event.');
-    //         assert.equal(result.logs[2].args.ticketId, 3, 'Should be the token id 3.');
-    //         assert.equal(result.logs[2].args.price, convertTokensToWei('1'), 'Should log the price which is 1 AVAX.');
-    //         assert.equal(result.logs[2].args.seller, creator, 'Should log the creator as the one who cancels the listing.');
-    //     })
+        it('The seller is now the owner of the NFT and not the Marketplace SC.', async () => {
+            const ownerOfNFT = await marketplace.ownerOf(3)
+            assert.equal(ownerOfNFT, creator, 'The owner should be the creator.');
+            assert.notEqual(ownerOfNFT, marketplace.address, 'The owner should not be the marketplace.');
+        })
 
-    //     it('The seller is now the owner of the NFT and not the Marketplace SC.', async () => {
-    //         const ownerOfNFT = await marketplace.ownerOf(3)
-    //         assert.equal(ownerOfNFT, creator, 'The owner should be the creator.');
-    //         assert.notEqual(ownerOfNFT, marketplace.address, 'The owner should not be the marketplace.');
-    //     })
+        it('The claimableByAccount mapping should be cleared.', async () => {
+            const claimableBySeller = await marketplace.claimableByAccount(3)
+            assert.equal(claimableBySeller, 0x0, 'The NFT with token id 3 cannot be claimed by anyone after its no longer listed.')
+        })
 
-    //     it('The claimableByAccount mapping should be cleared.', async () => {
-    //         const claimableBySeller = await marketplace.claimableByAccount(3)
-    //         assert.equal(claimableBySeller, 0x0, 'The NFT with token id 1 cannot be claimed by anyone after its no longer listed.')
-    //     })
+        it('The listing should not exist anymore.', async () => {
+            const listing = await marketplace.ListProduct(3)
+            assert.equal(listing['0'], 0, 'The price is reset to 0.')
+            assert.equal(listing['1'], 0x0, 'The address(0) should be the one which owns the listing.')
+        })
 
-    //     it('The listing should not exist anymore.', async () => {
-    //         const listing = await marketplace.ListProduct(3)
-    //         assert.equal(listing['0'], 0, 'The price is reset to 0.')
-    //         assert.equal(listing['1'], 0x0, 'The address(0) should be the one which owns the listing.')
-    //     })
+        it('The token id 3 is not listed anymore.', async () => {
+            const hasBeenListed = await marketplace.hasBeenListed(3)
+            assert.equal(hasBeenListed, false, 'The NFT with token id 1 is not listed anymore.')
+        })
 
-    //     it('The token id 3 is not listed anymore.', async () => {
-    //         const hasBeenListed = await marketplace.hasBeenListed(3)
-    //         assert.equal(hasBeenListed, false, 'The NFT with token id 1 is not listed anymore.')
-    //     })
+    })
 
-    // })
-
-    // describe('Buy a NFT.', async () => {
+    describe('Buy a NFT.', async () => {
     //     //Make sure to list the item again
-    //     before(async () => {
-    //         await marketplace.addProduct(3, convertTokensToWei('1'), convertTokensToWei('0.5'), 202212011000, true, { from: creator })
-    //     });
+        before(async () => {
+            await marketplace.addProduct(3, convertTokensToWei('1.2'), convertTokensToWei('0.0005'), { from: creator })
+        });
 
-    //     it('You cannot buy an item that is not listed or does not exist.', async () => {
-    //         await expectRevert(marketplace.buyProduct(1, 2, 202212061405, { from: buyer }), 'The ticket needs to be listed in order to be bought, hold or cancel.');
-    //     })
+        it('You cannot buy an item that is not listed or does not exist.', async () => {
+            await expectRevert(marketplace.buyProduct(1, { from: buyer }), 'The ticket needs to be listed in order to be bought, hold or cancel.');
+        })
 
-    //     it('You need to pay the correct price of 1 AVAX.', async () => {
-    //         await expectRevert(marketplace.buyProduct(1, 3, 202212061405, { from: buyer, value: convertTokensToWei('4') }), 'You need to pay the correct price.');
-    //     })
+        it('You need to pay the correct price of 1.2 AVAX.', async () => {
+            await expectRevert(marketplace.buyProduct(2, { from: buyer, value: convertTokensToWei('4') }), 'You need to pay the correct price.');
+        })
 
     //     //Define the balances to check later whether they've increased or decreased by the correct amount
-    //     let balanceOfCreatorBeforePurchase;
+        let balanceOfCreatorBeforePurchase;
 
-    //     it('Buy the NFT.', async () => {
-    //         balanceOfCreatorBeforePurchase = await web3.eth.getBalance(creator)
-    //         const result = await marketplace.buyProduct(1, 3, 202212061405, { from: buyer, value: convertTokensToWei('1') })
-    //         assert.equal(result.logs.length, 3, 'Should trigger three events.');
+        it('Buy the NFT.', async () => {
+            balanceOfCreatorBeforePurchase = await web3.eth.getBalance(creator)
+            const result = await marketplace.buyProduct(3, { from: buyer, value: convertTokensToWei('1.2') })
+            assert.equal(result.logs.length, 2, 'Should trigger three events.');
 
-    //         //event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
-    //         assert.equal(result.logs[0].event, 'Approval', 'Should be the \'Approval\' event.');
-    //         assert.equal(result.logs[0].args.owner, marketplace.address, 'Should be the marketplace address.');
-    //         assert.equal(result.logs[0].args.approved, 0x0, 'Should log the address(0) to approve in order to clear previous approvals.');
-    //         assert.equal(result.logs[0].args.tokenId, 3, 'Should log the token id which is 3.');
+            //event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+            assert.equal(result.logs[0].event, 'Transfer', 'Should be the \'Transfer\' event.');
+            assert.equal(result.logs[0].args.from, marketplace.address, 'Should be the marketplace address.');
+            assert.equal(result.logs[0].args.to, buyer, 'Should log the recipient that is the buyer.');
+            assert.equal(result.logs[0].args.tokenId, 3, 'Should log the token id which is 3.');
 
-    //         //event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
-    //         assert.equal(result.logs[1].event, 'Transfer', 'Should be the \'Transfer\' event.');
-    //         assert.equal(result.logs[1].args.from, marketplace.address, 'Should be the marketplace address.');
-    //         assert.equal(result.logs[1].args.to, buyer, 'Should log the recipient that is the buyer.');
-    //         assert.equal(result.logs[1].args.tokenId, 3, 'Should log the token id which is 3.');
+            //event event ItemBought(uint256 tokenId, uint256 price, address seller);
+            assert.equal(result.logs[1].event, 'productBought', 'Should be the \'productBought\' event.');
+            assert.equal(result.logs[1].args.ticketId, 3, 'Should be the token id 3.');
+            assert.equal(result.logs[1].args.price, convertTokensToWei('1.2'), 'Should log the price which is 1.2 AVAX.');
+            assert.equal(result.logs[1].args.buyer, buyer, 'Should log the buyer address as the buyer.');
+        })
 
-    //         //event event ItemBought(uint256 tokenId, uint256 price, address seller);
-    //         assert.equal(result.logs[2].event, 'productBought', 'Should be the \'productBought\' event.');
-    //         assert.equal(result.logs[2].args.ticketId, 3, 'Should be the token id 3.');
-    //         assert.equal(result.logs[2].args.price, convertTokensToWei('1'), 'Should log the price which is 1 AVAX.');
-    //         assert.equal(result.logs[2].args.buyer, buyer, 'Should log the buyer address as the buyer.');
-    //     })
+        it('The buyer is now the owner of the NFT and not the Marketplace SC.', async () => {
+            const ownerOfNFT = await marketplace.ownerOf(3)
+            assert.equal(ownerOfNFT, buyer, 'The owner should be the buyer.');
+            assert.notEqual(ownerOfNFT, marketplace.address, 'The owner should not be the marketplace.');
+        })
 
-    //     it('The buyer is now the owner of the NFT and not the Marketplace SC.', async () => {
-    //         const ownerOfNFT = await marketplace.ownerOf(3)
-    //         assert.equal(ownerOfNFT, buyer, 'The owner should be the buyer.');
-    //         assert.notEqual(ownerOfNFT, marketplace.address, 'The owner should not be the marketplace.');
-    //     })
+        it('The claimableByAccount mapping should be cleared.', async () => {
+            const claimableBySeller = await marketplace.claimableByAccount(3)
+            assert.equal(claimableBySeller, 0x0, 'The NFT with token id 3 cannot be claimed by anyone after its no longer listed.')
+        })
 
-    //     it('The claimableByAccount mapping should be cleared.', async () => {
-    //         const claimableBySeller = await marketplace.claimableByAccount(3)
-    //         assert.equal(claimableBySeller, 0x0, 'The NFT with token id 3 cannot be claimed by anyone after its no longer listed.')
-    //     })
+        it('The listing should not exist anymore.', async () => {
+            const listing = await marketplace.getProdust(3)
+            assert.equal(listing['0'], 0, 'The price is reset to 0.')
+            assert.equal(listing['1'], 0, 'The gas is reset to 0.')
+        })
 
-    //     it('The listing should not exist anymore.', async () => {
-    //         const listing = await marketplace.getProdust(3)
-    //         assert.equal(listing['0'], 0, 'The price is reset to 0.')
-    //         assert.equal(listing['1'], 0, 'The gas is reset to 0.')
-    //     })
+        it('The token id 3 is not listed anymore.', async () => {
+            const hasBeenListed = await marketplace.hasBeenListed(3)
+            assert.equal(hasBeenListed, false, 'The NFT with token id 3 should not be listed anymore.')
+        })
 
-    //     it('The token id 3 is not listed anymore.', async () => {
-    //         const hasBeenListed = await marketplace.hasBeenListed(3)
-    //         assert.equal(hasBeenListed, false, 'The NFT with token id 3 should not be listed anymore.')
-    //     })
+        it('The item has the correct data.', async () => {
+            const item = await marketplace.getTicket(3)
+            assert.notEqual(item.creator, buyer, 'The owner should not be the creator.')
+            assert.equal(item.EvntID, 1, 'Event ID should be the \'1\'.')
+            assert.equal(item.EventName, 'event', 'Event name should be the \'event\'.')
+            assert.equal(parseInt(item.dateEvent.toString()), 202303011800, 'dateEvent should be the \'202303011800\'.')
+            assert.equal(item.zone, 'A', 'Zone should be the \'A\'.')
+            assert.equal(item.seat, 'A3', 'Seat should be the \'A3\'.')
+            assert.equal(item.owner, buyer, 'The buyer is the owner now.')
+            assert.equal(item.creator, creator, 'The creator is the creator.')
+            assert.equal(parseInt(item.priceSeat.toString()), convertTokensToWei('1'), 'Price should be the "'+convertTokensToWei('1')+'" wei.')
+            assert.equal(item.metadata, 'metadata3', 'Metadata should be \'metadata3\'.')
+        })
 
-    //     it('The item has the correct data.', async () => {
-    //         const item = await marketplace.getTicket(3)
-    //         assert.notEqual(item.creator, buyer, 'The owner should not be the creator.')
-    //         assert.equal(item.EvntID, 1, 'Event ID should be the \'1\'.')
-    //         assert.equal(item.EventName, 'event', 'Event name should be the \'event\'.')
-    //         assert.equal(parseInt(item.dateEvent.toString()), 202212201800, 'dateEvent should be the \'202202011800\'.')
-    //         assert.equal(item.zone, 'A', 'Zone should be the \'A\'.')
-    //         assert.equal(item.seat, 'A3', 'Seat should be the \'A1\'.')
-    //         assert.equal(item.owner, buyer, 'The buyer is the owner now.')
-    //         assert.equal(item.creator, creator, 'The creator is the creator.')
-    //         assert.equal(parseInt(item.priceSeat.toString()), convertTokensToWei('1'), 'Price should be the "'+convertTokensToWei('1')+'" wei.')
-    //         assert.equal(parseInt(item.priceGas.toString()), convertTokensToWei('0.5'), 'Gas should be the "'+convertTokensToWei('0.5')+'" wei.')
-    //         assert.equal(item.IsUse, false, 'Isuse should be \'false\'.')
-    //         assert.equal(parseInt(item.limit.toString()), 4, 'Limit should be the \'4\' .')
-    //         assert.equal(item.metadata, 'metadata3', 'Metadata should be \'metadata3\'.')
-    //     })
+        it('The User limit of buyer is 0.', async () => {
+            const limit = await marketplace.UserLimit(buyer, 1)
+            assert.equal(limit, 0, 'The limit of buyer should be 0.')
+        })
 
-    //     it('The User limit of buyer is 1.', async () => {
-    //         const limit = await marketplace.UserLimit(buyer, 1)
-    //         assert.equal(limit, 1, 'The limit of buyer should be 1.')
-    //     })
-
-    //     it('The User limit of creator is 0.', async () => {
-    //         const limit = await marketplace.UserLimit(creator, 1)
-    //         assert.equal(limit, 0, 'The limit of buyer should be 0.')
-    //     })
-
-    //     it('The balances of creator and first buyer are correct.', async () => {
-    //         const balanceOfCreatorAfterPurchase = await web3.eth.getBalance(creator)
-    //         assert.equal(balanceOfCreatorAfterPurchase, toBN(balanceOfCreatorBeforePurchase).add(toBN(convertTokensToWei('1'))), 'The balance of the creator should be increased by 1 AVAX after the purchase.')
-    //     })
+        it('The balances of creator and first buyer are correct.', async () => {
+            const balanceOfCreatorAfterPurchase = await web3.eth.getBalance(creator)
+            assert.equal(balanceOfCreatorAfterPurchase, toBN(balanceOfCreatorBeforePurchase).add(toBN(convertTokensToWei('1.2'))), 'The balance of the creator should be increased by 1.2 AVAX after the purchase.')
+        })
 
     //     it('The balances of creator, first buyer who is now the seller and second buyer are correct.', async () => {
     //         //List the item again, only this time by the new owner
@@ -439,5 +434,5 @@ contract('TicketMarketplace', ([contractDeployer, creator, buyer, secondBuyer]) 
     //         assert.equal(balanceOfBuyerAfterPurchase, toBN(balanceOfBuyerBeforePurchase).add(toBN(convertTokensToWei('10'))), 'The balance of the seller should increase by 80% of the sold amount.')
     //         // assert.equal(balanceOfsecondBuyerBeforePurchase, toBN(balanceOfsecondBuyerAfterPurchase).add(toBN(convertTokensToWei('10'))).add(toBN(rst_buy.receipt.gasUsed*100000000000)), 'The balance of the creator should increase by 20% of the sold amount.')
     //     })
-    // })
+    })
 });
