@@ -1,85 +1,107 @@
 import React from 'react'
+import $ from 'jquery';
 import MetaMaskOnboarding from '@metamask/onboarding'
 import { ethers } from 'ethers'
 import axios from "axios"
+import Swal from 'sweetalert2'
+import CryptoJS from 'crypto-js'
+import { connect } from "react-redux";
+import { changeWalletAccount, changeChainId, checkMetaMaskInstalled, setMMInstalledFlag, setConnectFlag, setLoginFlag, setUsername, setThaiID } from '../features/account/accountSlicer';
+import 'bootstrap/dist/js/bootstrap.bundle';
+import SignupForm from './SignupForm'
+import AccountTab from './AccountTab'
 
-var hex_chainId = ethers.utils.hexValue(43113)
-// Avalanche Network information for automatic onboarding in MetaMask
-const AVALANCHE_MAINNET_PARAMS = {
-  chainId: '0xA86A',
-  chainName: 'Avalanche Mainnet C-Chain',
-  nativeCurrency: {
-    name: 'Avalanche',
-    symbol: 'AVAX',
-    decimals: 18
-  },
-  rpcUrls: ['https://api.avax.network/ext/bc/C/rpc'],
-  blockExplorerUrls: ['https://snowtrace.io/']
-}
-const AVALANCHE_TESTNET_PARAMS = {
-  chainId: hex_chainId,
-  chainName: 'Avalanche Testnet C-Chain',
-  nativeCurrency: {
-    name: 'Avalanche',
-    symbol: 'AVAX',
-    decimals: 18
-  },
-  rpcUrls: ['https://api.avax-test.network/ext/bc/C/rpc'],
-  blockExplorerUrls: ['https://testnet.snowtrace.io/']
-}
 
-// This code uses the Avalanche Test Network. If you want to use the main network, simply
-// change this to AVALANCHE_MAINNET_PARAMS
-const AVALANCHE_NETWORK_PARAMS = AVALANCHE_TESTNET_PARAMS
-
-// Check if the chain id is the selected Avalanche chain id
-const isAvalancheChain = (chainId) => (
-  chainId &&
-  (chainId.toLowerCase() === AVALANCHE_NETWORK_PARAMS.chainId.toLowerCase() || chainId == 43113) 
-)
-
-export class OnboardingButton extends React.Component {
-  constructor (props) {
-    super(props)
+class OnboardingButton extends React.Component {
+  constructor () {
+    super()
 
     this.state = {
-      accounts: [],
-      chainId: null,
       onboarding: new MetaMaskOnboarding()
     }
 
     this.connectMetaMask = this.connectMetaMask.bind(this)
     this.switchToAvalancheChain = this.switchToAvalancheChain.bind(this)
+    this.check_available_walletaddress = this.check_available_walletaddress.bind(this)
+  }
+
+  async check_available_walletaddress(address) {
+    var q = {query: "select * from Accounts where address = ?", 
+    bind: [address]}
+    const address_q_rst = await axios.post("http://localhost:8800/select", q)
+    console.log("check_address")
+    console.log(address_q_rst)
+
+    if (address_q_rst.data.length > 0) {
+      this.props.dispatch(setLoginFlag(true))
+      this.props.dispatch(setUsername(address_q_rst.data[0]['username']))
+      this.props.dispatch(setThaiID(address_q_rst.data[0]["thai_id"]))
+      return true
+    } else {
+      this.props.dispatch(setLoginFlag(false))
+      return false
+    }
   }
 
   componentDidMount () {
+    console.log("(DidMount)")
+    // console.log(this.props.account_detail.MetaMaskIsInstalled)
     if (MetaMaskOnboarding.isMetaMaskInstalled()) {
+      this.props.dispatch(setMMInstalledFlag(true))
       this.connectMetaMask()
 
-      // Update the list of accounts if the user switches accounts in MetaMask
-      window.ethereum.on('accountsChanged', accounts => this.setState({ accounts }))
+      // chain
+      const chainId = window.ethereum.networkVersion
+      this.props.dispatch(changeChainId(chainId))
 
       // Reload the site if the user selects a different chain
-      window.ethereum.on('chainChanged', () => window.location.reload())
+      window.ethereum.on('chainChanged', (chainId) => {
+        this.props.dispatch(changeChainId(chainId))
+        // window.location.reload()
+      })  
 
       // Set the chain id once the MetaMask wallet is connected
       window.ethereum.on('connect', (connectInfo) => {
         const chainId = connectInfo.chainId
-        this.setState({ chainId })
-        if (isAvalancheChain(chainId)) {
-          // The user is now connected to the MetaMask wallet and has the correct
-          // Avalanche chain selected.
-          this.props.onConnected()
+        this.props.dispatch(changeChainId(chainId))
+      })
+
+      // Update the list of accounts if the user switches accounts in MetaMask
+      console.log("get accounts!! (DidMount)")
+      window.ethereum.on('accountsChanged', accounts => {
+        console.log("account did mount")
+        this.props.dispatch(changeWalletAccount(accounts))
+        if (accounts.length > 0) {
+          this.check_available_walletaddress(accounts[0])
         }
       })
+
+    } else {
+      this.props.dispatch(setMMInstalledFlag(false))
     }
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.isShowLogin !== this.state.isShowLogin) {
+      console.log('isShowLogin state has changed to ', this.state.isShowLogin.toString())
+    }
+
+    if (prevProps.account_detail != this.props.account_detail) {
+      console.log(this.props.account_detail)
+    }
+
   }
 
   connectMetaMask () {
     // Request to connect to the MetaMask wallet
     window.ethereum
       .request({ method: 'eth_requestAccounts' })
-      .then(accounts => this.setState({ accounts }))
+      .then(accounts => {
+        this.props.dispatch(changeWalletAccount(accounts))
+        if (accounts.length > 0) {
+          this.check_available_walletaddress(accounts[0])
+        }
+      })
   }
 
   switchToAvalancheChain () {
@@ -87,28 +109,26 @@ export class OnboardingButton extends React.Component {
     window.ethereum
       .request({
         method: 'wallet_addEthereumChain',
-        params: [AVALANCHE_TESTNET_PARAMS]
+        params: [this.props.account_detail.AvalancheChain]
       })
   }
 
   getAccount () {
-    return this.state.accounts[0]
+    return this.props.account_detail.wallet_accounts[0]
   }
 
+
+
   render () {
-    if (MetaMaskOnboarding.isMetaMaskInstalled()) {
-      if (this.state.accounts.length > 0) {
+    console.log("get accounts!! (Render)")
+    if (this.props.account_detail.MetaMaskIsInstalled) {
+      if (this.props.account_detail.wallet_accounts.length > 0) {
         // If the user is connected to MetaMask, stop the onboarding process.
         this.state.onboarding.stopOnboarding()
       }
     }
     
-    if (this.state.chainId === null) {
-      const chainId = window.ethereum.networkVersion
-      this.setState({ chainId })
-    }
-    
-    if (!MetaMaskOnboarding.isMetaMaskInstalled()) {
+    if (!this.props.account_detail.MetaMaskIsInstalled) {
       // If MetaMask is not yet installed, ask the user to start the MetaMask onboarding process
       // (install the MetaMask browser extension).
       return (
@@ -119,7 +139,7 @@ export class OnboardingButton extends React.Component {
           </button>
         </div>
       )
-    } else if (this.state.accounts.length === 0) {
+    } else if (this.props.account_detail.wallet_accounts.length === 0) {
       // If accounts is empty the user is not yet connected to the MetaMask wallet.
       // Ask the user to connect to MetaMask.
       return (
@@ -130,21 +150,38 @@ export class OnboardingButton extends React.Component {
           </button>
         </div>
       )
-    } else if (!isAvalancheChain(this.state.chainId)) {
+    } else if (!this.props.account_detail.isAvalancheChain) {
       // If the selected chain id is not the Avalanche chain id, ask the user to switch
       // to Avalanche.
       return (
         <div>
-          <div>Account: {this.state.accounts[0]}</div>
-          <div>To run this dApp you need to switch to the {AVALANCHE_NETWORK_PARAMS.chainName} chain</div>
+          <div>Account: {this.props.account_detail.wallet_accounts[0]}</div>
+          <div>To run this dApp you need to switch to the {this.props.account_detail.AvalancheChain.chainName} chain</div>
           <button onClick={this.switchToAvalancheChain}>
-            Switch to the {AVALANCHE_NETWORK_PARAMS.chainName} chain
+            Switch to the {this.props.account_detail.AvalancheChain.chainName} chain
           </button>
+        </div>
+      )
+    } else if (this.props.account_detail.isLogin) {
+      return (
+        <div>
+          <AccountTab />
         </div>
       )
     } else {
       // The user is connected to the MetaMask wallet and has the Avalanche chain selected.
-      return <div style={{color: 'white'}}>Account: {this.state.accounts[0]}</div>
+      return (
+        <div>
+          <SignupForm />
+        </div>
+      )
     }
   }
 }
+
+
+const mapStateToProps = (state) => ({
+  account_detail: state.account
+});
+
+export default connect(mapStateToProps)(OnboardingButton);

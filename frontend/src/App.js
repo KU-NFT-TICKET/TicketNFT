@@ -6,29 +6,29 @@ import {
   Route,
   NavLink,
   HashRouter,
-  Routes
+  Routes,
+  useParams
 } from "react-router-dom";
 import 'bootstrap/dist/js/bootstrap.bundle';
 
 import Home from "./js/Home";
 import Create from "./js/Create";
 import Detail from "./js/Detail";
+import Profile from "./js/Profile";
 
 // Import App components
-import { OnboardingButton } from './components/Onboarding'
+import OnboardingButton from './components/Onboarding'
 
 class App extends React.Component {
   constructor() {
     super()
 
     this.state = {
-      isConnected: false,
       contractMaket: null,
       contractAccount: null, 
       contractEvent: null,
     }
 
-    this.onConnected = this.onConnected.bind(this)
     // this.isExistAccount = this.isExistAccount.bind(this)
   
   }
@@ -39,11 +39,6 @@ class App extends React.Component {
     }
   }
 
-  async onConnected() {
-    this.setState({
-      isConnected: true,
-    })
-  }
 
   render() {
     return (
@@ -73,18 +68,14 @@ class App extends React.Component {
                 <li className="nav-item">
                 <NavLink to="/create" className="nav-link">Create</NavLink>
                 </li>
+                <li className="nav-item">
+                <NavLink to="/events" className="nav-link">Events</NavLink>
+                </li>
+                <li className="nav-item">
+                <NavLink to="/counter" className="nav-link">Counter</NavLink>
+                </li>
               </ul>
-              <li className="nav-item dropdown">
-                <a className="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                  <OnboardingButton onConnected={this.onConnected} />
-                </a>
-                <ul className="dropdown-menu" aria-labelledby="navbarDropdown">
-                  <li><a className="dropdown-item" href="#">Action</a></li>
-                  <li><a className="dropdown-item" href="#">Another action</a></li>
-                  <li><a className="dropdown-item" href="#">Something else here</a></li>
-                </ul>
-              </li>
-              
+              <OnboardingButton/>
             </div>
           </div>
         </nav>
@@ -93,6 +84,7 @@ class App extends React.Component {
             <Route exact path="/" element={<Home/>}/>
             <Route path="/create" element={<Create/>}/>
             <Route path="/detail/:id" element={<Detail/>}/>
+            <Route path="/profile" element={<Profile/>}/>
           </Routes>
         </div>
       </div>
