@@ -18,6 +18,21 @@ export class SignupForm extends React.Component {
     this.handleLoginClick = this.handleLoginClick.bind(this)
   }
 
+  async check_available_thaiID(thai_id) {
+    var q = {query: "select * from Accounts"}
+    const thai_id_rst = await axios.post("http://localhost:8800/select", q)
+    console.log("find_thai_id")
+    console.log(thai_id_rst)
+
+    var decrypted_thaiID = [];
+    for (const data of thai_id_rst.data) {
+      var thai_id_row = decode_thaiID(data['thai_id'], data['Address'])
+      decrypted_thaiID.push(thai_id_row);
+    }
+    var id_flag = decrypted_thaiID.includes(thai_id)
+    return id_flag
+  }
+
   async check_available_username(username) {
     var q = {query: "select * from Accounts ;where username = ?", 
     bind: [username]}
@@ -40,19 +55,6 @@ export class SignupForm extends React.Component {
     console.log(email_q_rst)
 
     if (email_q_rst.data.length > 0) {
-      return true
-    } else {
-      return false
-    }
-  }
-
-  async check_available_thaiID(thai_id) {
-    var q = {query: "select * from Accounts where thai_id = ?", 
-    bind: [thai_id]}
-    const thaiID_q_rst = await axios.post("http://localhost:8800/select", q)
-    console.log("check_thaiID")
-    console.log(thaiID_q_rst)
-    if (thaiID_q_rst.data.length > 0) {
       return true
     } else {
       return false

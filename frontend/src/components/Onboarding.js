@@ -7,6 +7,7 @@ import Swal from 'sweetalert2'
 import CryptoJS from 'crypto-js'
 import { connect } from "react-redux";
 import { changeWalletAccount, changeChainId, checkMetaMaskInstalled, setMMInstalledFlag, setConnectFlag, setLoginFlag, setUsername, setThaiID } from '../features/account/accountSlicer';
+import { decode_thaiID } from '../features/function'
 import 'bootstrap/dist/js/bootstrap.bundle';
 import SignupForm from './SignupForm'
 import AccountTab from './AccountTab'
