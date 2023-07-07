@@ -6,6 +6,7 @@ import Resizer from "react-image-file-resizer";
 import {scanData, getData, putData} from './dynamoDB';
 import { AlexaForBusiness } from "aws-sdk";
 import axios from "axios"
+import { connect } from "react-redux";
 
 class Home extends React.Component {
 
@@ -13,8 +14,8 @@ class Home extends React.Component {
     this.onConnected()
   }
 
-  constructor(props) {
-    super(props)
+  constructor() {
+    super()
 
     this.state = {
       isConnected: false,
@@ -33,7 +34,7 @@ class Home extends React.Component {
     await provider.send("eth_requestAccounts", []);
     const accounts = await provider.listAccounts();
     // console.log(accounts[0])
-
+    
     var html = []
     try{
       var q = {query: "select event_id, event_name, DATE_FORMAT(date_sell, '%d %b %Y %T') as date_sell from Events where creator = ?", bind: [accounts[0]]}
@@ -90,14 +91,25 @@ class Home extends React.Component {
   }
 
   render() {
-    return (
-      <div>
-        <h1 style={{color: 'snow'}}>ALL EVENT</h1>
-        <div className="row">
-          {this.state.htmlListEvent}
+    if (this.props.account_detail.isLogin) {
+      return (
+        <div>
+          <h1 style={{color: 'snow'}}>ALL EVENT</h1>
+          <div className="row">
+            {this.state.htmlListEvent}
+          </div>
         </div>
-      </div>
-    );
+      );
+    } else {
+      return (
+        <div className="card mb-3 panel-style">
+          <div className="card-body">
+            <h5 className="card-title">Welcome to NFT Ticket</h5>
+            <p className="card-text">Try to create your first Event go to Create tab.</p>
+          </div>
+        </div>
+      );
+    }
   }
   
   componentDidUpdate(_, prevState) {
@@ -106,4 +118,8 @@ class Home extends React.Component {
 
 }
  
-export default Home;
+const mapStateToProps = (state) => ({
+  account_detail: state.account
+});
+
+export default connect(mapStateToProps)(Home);

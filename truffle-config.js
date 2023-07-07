@@ -6,8 +6,7 @@ module.exports = {
       provider: () => {
         return new HDWalletProvider({
           mnemonic: process.env.MNEMONIC,
-          providerOrUrl: `https://avalanche--fuji--rpc.datahub.figment.io/apikey/${process.env.APIKEY}/ext/bc/C/rpc`,
-          // providerOrUrl: `https://avalanche-testnet-rpc.allthatnode.com/${process.env.APIKEY}`,
+          providerOrUrl: `https://avalanche-fuji.infura.io/v3/${process.env.APIKEY}`,
           chainId: '43113'
         })
       },
@@ -31,5 +30,9 @@ module.exports = {
       version: "0.8.6"
     }
   },
-  plugins: ["solidity-coverage", "truffle-contract-size"]
+  plugins: ["solidity-coverage", "truffle-contract-size", "truffle-plugin-verify"],
+  api_keys: {
+    etherscan: process.env.etherscanApiKey,
+    snowtrace: process.env.snowtraceApiKey
+  }
 };

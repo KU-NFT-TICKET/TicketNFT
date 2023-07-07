@@ -11,8 +11,6 @@ contract TicketMarketplace is TicketNFT {
         uint price;
         uint gas;
         address owner;
-        uint256 dateSell;
-        bool newProduct;
     }
 
     struct boughtProduct {
@@ -20,7 +18,7 @@ contract TicketMarketplace is TicketNFT {
 		uint gas;
     }
 
-    // Mapping for list new and old product
+    // Mapping for list product
     mapping (uint256 => product) public ListProduct;
 
     // Mapping to prevent the same item being listed twice
@@ -33,16 +31,11 @@ contract TicketMarketplace is TicketNFT {
     mapping (uint256 => boughtProduct[]) public chainBuy;
 
     // array of all product just for listing
-    uint256[] private products;
+    uint256[] public products;
 
     // mapping key of list product
-    mapping (uint256 => uint256) private _productID;
+    mapping (uint256 => uint256) public _productID;
 
-    // mapping of hold product
-    mapping (uint256 => bool) public hasBeenHold;
-
-    // user limit buy/event
-    mapping (address => mapping(uint256 => uint256)) public UserLimit;
     // event
     event addedProduct(uint256 indexed ticketId, uint price, address indexed seller);
     event cancelSell(uint256 indexed ticketId, uint price, address indexed seller);
@@ -57,32 +50,25 @@ contract TicketMarketplace is TicketNFT {
         _;
     }
 
-    modifier onlyListingAccount(uint256 ticketId) {
-        require(
-            msg.sender == claimableByAccount[ticketId],
-            "Only the address that has listed the Ticket can hold or cancel the listing."
-        );
-        _;
-    }
-
-    modifier isListing(uint256 ticketId) {
-        require(
-            hasBeenListed[ticketId],
-            "The ticket needs to be listed in order to be bought, hold or cancel."
-        );
-        _;
-    }
-
-    modifier isHolding(uint256 ticketId) {
-        require(
-            hasBeenHold[ticketId],
-            "The ticket need to be Hold"
-        );
+    modifier isCheck(uint256 ticketId, uint ck) {
+        // 1 = claimableByAccount
+        // 2 = hasBeenListed
+        if (ck == 1) {
+            require(
+                msg.sender == claimableByAccount[ticketId],
+                "Only the address that has listed the Ticket can hold or cancel the listing."
+            );
+        } else if (ck == 2) {
+            require(
+                hasBeenListed[ticketId],
+                "The ticket needs to be listed in order to be bought, hold or cancel."
+            );
+        }
         _;
     }
 
     // function
-    function addProduct (uint256 _ticketId, uint _price, uint _gas, uint256 _dateSell, bool _newProduct) public onlyTokenOwner(_ticketId) {
+    function addProduct (uint256 _ticketId, uint256 _price, uint256 _gas) public onlyTokenOwner(_ticketId) {
         require(!hasBeenListed[_ticketId], "The ticket can only be listed once");
         //send the token to the smart contract
         _transfer(msg.sender, address(this), _ticketId);
@@ -91,9 +77,7 @@ contract TicketMarketplace is TicketNFT {
             _ticketId,
             _price,
             _gas,
-            msg.sender,
-            _dateSell,
-            _newProduct
+            msg.sender
         );
         hasBeenListed[_ticketId] = true;
         products.push(_ticketId);
@@ -101,45 +85,29 @@ contract TicketMarketplace is TicketNFT {
         emit addedProduct(_ticketId, _price, msg.sender);
     }
 
-    function cancelProduct(uint256 _ticketId) public onlyListingAccount(_ticketId) isListing(_ticketId) {
+    function cancelProduct(uint256 _ticketId) public isCheck(_ticketId, 1) isCheck(_ticketId, 2) {
         //send the token from the smart contract back to the one who listed it
         _transfer(address(this), msg.sender, _ticketId);
-        uint price = ListProduct[_ticketId].price;
+        emit cancelSell(_ticketId, ListProduct[_ticketId].price, msg.sender);
         delete claimableByAccount[_ticketId];
-        delete ListProduct[_ticketId];
-        delete hasBeenListed[_ticketId];
-        products[_productID[_ticketId]] = products[products.length - 1];
-        products.pop();
-        emit cancelSell(_ticketId, price, msg.sender);
+        clenup(_ticketId);
     }
-    function buyProduct(uint256 _EventID, uint256 _ticketId, uint256 _dateBuy) public isListing(_ticketId) payable {
+    function buyProduct(uint256 _ticketId) public isCheck(_ticketId, 2) payable {
+        uint256 _gas = gasleft();
         require(ListProduct[_ticketId].price == msg.value, "You need to pay the correct price.");
-        require(ListProduct[_ticketId].dateSell <= _dateBuy, "This Ticket is not for sell yet");
-        require(UserLimit[msg.sender][_EventID] <= tokenIdToTicket[_ticketId].limit, "You buy Ticket of this event to the limit");
         // sent to owner
         payable(tokenIdToTicket[_ticketId].owner).transfer(msg.value);
 
         //transfer the token from the smart contract back to the buyer
         _transfer(address(this), msg.sender, _ticketId);
-
-        //Modify the owner property of the item to be the buyer
-        TicketNFT.ticket storage ticket = tokenIdToTicket[_ticketId];
-        if (UserLimit[ticket.owner][_EventID] > 0) {
-            UserLimit[ticket.owner][_EventID] -= 1;
-        }
-        ticket.owner = msg.sender;
-        tokenIdToTicket[_ticketId] = ticket;
+        tokenIdToTicket[_ticketId].owner = msg.sender;
 
         // list chain of buy
-        chainBuy[_ticketId].push(boughtProduct(ListProduct[_ticketId].price, ListProduct[_ticketId].gas));
-        // user limit
-        UserLimit[msg.sender][_EventID] += 1;
+        chainBuy[_ticketId].push(boughtProduct(ListProduct[_ticketId].price, _gas));
+        
         //clean up
-        delete ListProduct[_ticketId];
         delete claimableByAccount[_ticketId];
-        delete hasBeenListed[_ticketId];
-        products[_productID[_ticketId]] = products[products.length - 1];
-        products.pop();
+        clenup(_ticketId);
         emit productBought(_ticketId, msg.value, msg.sender);
     }
 
@@ -155,40 +123,10 @@ contract TicketMarketplace is TicketNFT {
         return products;
     }
 
-    function addholdProduct(uint256 _ticketId) public onlyListingAccount(_ticketId) isListing(_ticketId) returns(uint256) {
-        require(!hasBeenHold[_ticketId], "The ticket can only be Hold once");
-        hasBeenHold[_ticketId] = true;
-        //clean up
-        delete ListProduct[_ticketId];
-        delete hasBeenListed[_ticketId];
-        products[_productID[_ticketId]] = products[products.length - 1];
+    function clenup (uint256 _key) private {
+        delete ListProduct[_key];
+        delete hasBeenListed[_key];
+        products[_productID[_key]] = products[products.length - 1];
         products.pop();
-        return _ticketId;
-    }
-
-    function transferHoldProduct(uint256 _ticketId, address _receive) public onlyListingAccount(_ticketId) isHolding(_ticketId) returns(uint256) {
-        _transfer(address(this), _receive, _ticketId);
-
-        delete claimableByAccount[_ticketId];
-        return _ticketId;
-    }
-
-    function unHoldProduct(uint256 _ticketId) public onlyListingAccount(_ticketId) isHolding(_ticketId) {
-        hasBeenHold[_ticketId] = false;
-    }
-
-    function create_sell(uint256 _EventID, string memory _EventName,
-        uint256 _dateEvent,
-        uint256 _dateSell,
-        string memory _zone,
-        string memory _seat,
-        uint _priceSeat,
-        uint _priceGas,
-        uint256 __limit,
-        string memory _metadata) public returns(uint256) 
-    {
-        uint256 _ticketID = MintTicket(_EventID, _EventName, _dateEvent, _zone, _seat, _priceSeat, _priceGas, __limit, _metadata, msg.sender);
-        addProduct(_ticketID, _priceSeat, _priceGas, _dateSell, true);
-        return _ticketID;
     }
 }

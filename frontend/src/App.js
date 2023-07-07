@@ -68,12 +68,6 @@ class App extends React.Component {
                 <li className="nav-item">
                 <NavLink to="/create" className="nav-link">Create</NavLink>
                 </li>
-                <li className="nav-item">
-                <NavLink to="/events" className="nav-link">Events</NavLink>
-                </li>
-                <li className="nav-item">
-                <NavLink to="/counter" className="nav-link">Counter</NavLink>
-                </li>
               </ul>
               <OnboardingButton/>
             </div>

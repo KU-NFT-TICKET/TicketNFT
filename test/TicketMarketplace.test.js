@@ -5,11 +5,11 @@ const { convertTokensToWei } = require('../utils/tokens')
 const { toBN } = web3.utils;
 const fs = require('fs');
 
-contract('TicketMarketplace', (account) => {
+contract('TicketMarketplace', ([contractDeployer, owner, creator, buyer, secondBuyer]) => {
     let marketplace;
 
     before(async () => {
-        marketplace = await Marketplace.new({ from: account[0] })
+        marketplace = await Marketplace.new({ from: contractDeployer })
     });
 
     // console.log('contractDeployer: ', contractDeployer)
@@ -79,7 +79,11 @@ contract('TicketMarketplace', (account) => {
             const result = await marketplace.createTicket(1, 1, 'event', [202303011800, 202302011000, 202302071215], 'A', 'A1', convertTokensToWei('1'), 4, 'metadata', owner, true, { from: creator })
             assert.equal(result.logs.length, 2, 'Should trigger two events.');
             console.log(result);
-        
+            
+            const ck_owner = await marketplace.ownerOf(1)
+            assert.equal(ck_owner, creator, 'The owner should be the creator.');
+            console.log(ck_owner);
+
             assert.equal(result.logs[0].event, 'Transfer', 'Should be the \'Transfer\' event.');
             assert.equal(result.logs[0].args.from, 0x0, 'Should be the 0x0 address.');
             assert.equal(result.logs[0].args.to, creator, 'Should log the recipient which is the creator.');
