@@ -30,7 +30,7 @@
   },
   "scripts": {
     "test": "mocha",
-    "build": "react-app-rewired build"
+    "build": ""
   },
   "repository": {
     "type": "git",
