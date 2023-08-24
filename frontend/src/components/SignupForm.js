@@ -20,7 +20,7 @@ export class SignupForm extends React.Component {
 
   async check_available_thaiID(thai_id) {
     var q = {query: "select * from Accounts"}
-    const thai_id_rst = await axios.post("http://localhost:8800/select", q)
+    const thai_id_rst = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
     console.log("find_thai_id")
     console.log(thai_id_rst)
 
@@ -36,7 +36,7 @@ export class SignupForm extends React.Component {
   async check_available_username(username) {
     var q = {query: "select * from Accounts ;where username = ?", 
     bind: [username]}
-    const username_q_rst = await axios.post("http://localhost:8800/select", q)
+    const username_q_rst = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
     console.log("check_username")
     console.log(username_q_rst)
 
@@ -50,7 +50,7 @@ export class SignupForm extends React.Component {
   async check_available_email(email) {
     var q = {query: "select * from Accounts where email = ?", 
     bind: [email]}
-    const email_q_rst = await axios.post("http://localhost:8800/select", q)
+    const email_q_rst = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
     console.log("check_email")
     console.log(email_q_rst)
 
@@ -127,7 +127,7 @@ export class SignupForm extends React.Component {
 
         // check thai
         // var q = {query: "select CAST(AES_DECRYPT(thai_id, address) AS CHAR) as thai_id, address from Accounts where username = 'OCarolZ'"}
-        // const testquery = await axios.post("http://localhost:8800/select", q);
+        // const testquery = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q);
         // var encrypted_thai_id = testquery.data[0]['thai_id']
         var encrypted_thai_id = encode_thaiID(signup_thaiID, this.props.account_detail.wallet_accounts[0])
         if (signup_thaiID === "") {
@@ -193,7 +193,7 @@ export class SignupForm extends React.Component {
           console.log("encode_thai_id: ", cipher_thaiID)
           var q = {query: "insert into Accounts (Address, username, thai_id) values (?, ?, ?)", 
           bind: [this.props.account_detail.wallet_accounts[0], signup_dict["username"], cipher_thaiID]}
-          var insertItem = await axios.post("http://localhost:8800/insert", q);
+          var insertItem = await axios.post(process.env.REACT_APP_API_BASE_URL+"/insert", q);
           console.log(insertItem);
           // var putItem = {data: {insertId: 10}}
           if (insertItem.data.affectedRows !== undefined) {

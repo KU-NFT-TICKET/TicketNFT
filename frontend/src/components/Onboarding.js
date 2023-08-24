@@ -29,7 +29,7 @@ class OnboardingButton extends React.Component {
   async check_available_walletaddress(address) {
     var q = {query: "select * from Accounts where address = ?", 
     bind: [address]}
-    const address_q_rst = await axios.post("http://localhost:8800/select", q)
+    const address_q_rst = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
     console.log("check_address")
     console.log(address_q_rst)
 

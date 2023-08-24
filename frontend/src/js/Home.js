@@ -38,7 +38,7 @@ class Home extends React.Component {
     var html = []
     try{
       var q = {query: "select event_id, event_name, DATE_FORMAT(date_sell, '%d %b %Y %T') as date_sell from Events where creator = ?", bind: [accounts[0]]}
-      const ownEvent = await axios.post("http://localhost:8800/select", q)
+      const ownEvent = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
       console.log(ownEvent)
       for (const data of ownEvent.data) {
         console.log(data)

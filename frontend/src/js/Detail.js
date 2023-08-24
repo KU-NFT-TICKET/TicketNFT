@@ -94,12 +94,12 @@ class Detail extends React.Component {
             query: "update Seats set is_use = ? where transaction is not null and is_use is null and event_id = ? and owner = (select Address from Accounts where thai_id = ?)",
             bind: ['U', this.state.id, code_thai_id]
           }
-          var use_ticket = await axios.post("http://localhost:8800/select", q)
+          var use_ticket = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
           var q = {
             query: "select s.ticket_id, s.seat_id, s.seat_row, s.zone, s.owner, s.is_use, a.thai_id from Seats s left join Accounts a on (s.owner = a.address) where s.event_id = ? and s.creator = ? and s.transaction is not null and s.is_use is null order by s.zone, s.seat_row, s.seat_id",
             bind: [this.state.id, accounts[0]]
           }
-          const ownSeatUse = await axios.post("http://localhost:8800/select", q)
+          const ownSeatUse = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
           seat_use = ownSeatUse.data
           for (var i = 0; i < seat_use.length; i++) {
             if (use_list[seat_use[i].thai_id] === undefined) {
@@ -149,7 +149,7 @@ class Detail extends React.Component {
                 query: "update Hold_transfer set reciever = ? where ticket_id = ? and event_id = ?",
                 bind: [values[i].val, values[i].id, this.state.id]
               }
-              var transferHold = await axios.post("http://localhost:8800/select", q)
+              var transferHold = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
             }
             return { err: 0, msg: 'Insert success' }
           } catch (err) {
@@ -194,24 +194,24 @@ class Detail extends React.Component {
               query: "update Seats set is_hold = null where ticket_id in (select ticket_id from Hold_transfer where event_id = ? and reciever is null)",
               bind: [this.state.id]
             }
-            var updateHold = await axios.post("http://localhost:8800/select", q)
+            var updateHold = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
             var q = {
               query: "delete from Hold_transfer where event_id = ? and reciever is null",
               bind: [this.state.id]
             }
-            var delHold = await axios.post("http://localhost:8800/select", q)
+            var delHold = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
             for (var i = 0; i < this.state.holdTicket.length; i++) {
               var q = {
                 query: "insert into Hold_transfer (ticket_id, event_id, zone) values(?, ?, ?)",
                 bind: [this.state.holdTicket[i], this.state.id, this.state.tickets[this.state.holdTicket[i]].zone]
               }
-              var insertHold = await axios.post("http://localhost:8800/select", q)
+              var insertHold = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
             }
             var q = {
               query: "update Seats set is_hold = 'Y' where ticket_id in (select ticket_id from Hold_transfer where event_id = ?)",
               bind: [this.state.id]
             }
-            var updateHold = await axios.post("http://localhost:8800/select", q)
+            var updateHold = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
             return { err: 0, msg: 'Insert success' }
           } catch (err) {
             return { err: 1, msg: err }
@@ -260,7 +260,7 @@ class Detail extends React.Component {
         query: "select event_id, event_name, date_format(date_sell, '%m/%d/%Y %H:%i') as date_sell, date_format(date_event, '%m/%d/%Y %H:%i') as date_event, date_format(date_sell, '%W %d %M %Y %H:%i') as show_date_sell, date_format(date_event, '%W %d %M %Y') as show_date_event, date_format(date_event, '%H:%i') as show_time_event, detail, purchase_limit, venue from Events where creator = ? and event_id = ?",
         bind: [accounts[0], this.state.id]
       }
-      const ownEvent = await axios.post("http://localhost:8800/select", q)
+      const ownEvent = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
       data_detail = ownEvent.data[0]
     } catch (err) {
       console.log(err)
@@ -273,7 +273,7 @@ class Detail extends React.Component {
         query: "select s.*, h.reciever, h.event_id as eventid from Seats as s left join Hold_transfer as h on (s.ticket_id = h.ticket_id and s.event_id = h.event_id) where s.creator = ? and s.event_id = ?",
         bind: [accounts[0], this.state.id]
       }
-      const ownTickett = await axios.post("http://localhost:8800/select", q)
+      const ownTickett = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
       ticket_detail = ownTickett.data
       var z = ''
       var s = ''
@@ -359,7 +359,7 @@ class Detail extends React.Component {
         query: "select address, username from Accounts where address != ? and removed_date is null order by username",
         bind: [accounts[0]]
       }
-      const ownUser = await axios.post("http://localhost:8800/select", q)
+      const ownUser = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
       var user_app = ownUser.data
       const options = []
       for (var i = 0; i < user_app.length; i++) {
@@ -369,7 +369,7 @@ class Detail extends React.Component {
         query: "select h.ticket_id, h.reciever, s.zone, s.seat_row, s.seat_id, a.username from Hold_transfer h join Seats s on (h.ticket_id = s.ticket_id) left join Accounts a on (h.reciever = a.address) where h.event_id = ? and a.removed_date is null order by h.ticket_id",
         bind: [this.state.id]
       }
-      const ownTrans = await axios.post("http://localhost:8800/select", q)
+      const ownTrans = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
       var transfer_data = ownTrans.data
       var thead = [<thead>
         <tr>
@@ -426,7 +426,7 @@ class Detail extends React.Component {
         query: "select distinct ROUND(price/1000000000000000000, 2) as price from Seats where event_id = ? order by ROUND(price/1000000000000000000, 2) desc",
         bind: [this.state.id]
       }
-      const ownPrice = await axios.post("http://localhost:8800/select", q)
+      const ownPrice = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
       price_detail = ownPrice.data
     } catch (err) {
       console.log(err)
@@ -438,7 +438,7 @@ class Detail extends React.Component {
         query: "select count(*) seat_count from Seats where owner is null and event_id = ?",
         bind: [this.state.id]
       }
-      const ownSeatCount = await axios.post("http://localhost:8800/select", q)
+      const ownSeatCount = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
       seat_count = ownSeatCount.data[0]
     } catch (err) {
       console.log(err)
@@ -452,7 +452,7 @@ class Detail extends React.Component {
         query: "select s.ticket_id, s.seat_id, s.seat_row, s.zone, s.owner, s.is_use, a.thai_id from Seats s left join Accounts a on (s.owner = a.address) where s.event_id = ? and s.creator = ? and s.transaction is not null and s.is_use is null order by s.zone, s.seat_row, s.seat_id",
         bind: [this.state.id, accounts[0]]
       }
-      const ownSeatUse = await axios.post("http://localhost:8800/select", q)
+      const ownSeatUse = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
       seat_use = ownSeatUse.data
       for (var i = 0; i < seat_use.length; i++) {
         if (seat_use[i].owner !== null && !address.includes(seat_use[i].owner)) {
@@ -469,7 +469,7 @@ class Detail extends React.Component {
 
     try {
       var q = {query: "select * from Accounts"}
-      const thai_id_rst = await axios.post("http://localhost:8800/select", q)
+      const thai_id_rst = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
       console.log("find_thai_id")
       console.log(thai_id_rst)
 
@@ -508,7 +508,7 @@ class Detail extends React.Component {
     const accounts = await provider.listAccounts();
 
     var q = { query: "select * from Accounts as a join Events as e on (a.address = e.creator) where a.address = ? and a.removed_date is null and e.event_id = ?", bind: [accounts[0], this.state.id] }
-    const detailAccount = await axios.post("http://localhost:8800/select", q);
+    const detailAccount = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q);
 
     if (!detailAccount.data) {
       console.log("Only Creator can Delete Event")
@@ -530,21 +530,21 @@ class Detail extends React.Component {
               query: "delete from Hold_transfer where event_id = ?",
               bind: [this.state.id]
             }
-            var delHold = await axios.post("http://localhost:8800/insert", q);
+            var delHold = await axios.post(process.env.REACT_APP_API_BASE_URL+"/insert", q);
             console.log(delHold);
 
             var q = {
               query: "delete from Seats where event_id = ?",
               bind: [this.state.id]
             }
-            var delHold = await axios.post("http://localhost:8800/insert", q);
+            var delHold = await axios.post(process.env.REACT_APP_API_BASE_URL+"/insert", q);
             console.log(delHold);
 
             var q = {
               query: "delete from Events where event_id = ?",
               bind: [this.state.id]
             }
-            var delHold = await axios.post("http://localhost:8800/insert", q);
+            var delHold = await axios.post(process.env.REACT_APP_API_BASE_URL+"/insert", q);
             console.log(delHold);
 
             var delPoster = deletePic(this.state.id + '.png', 'poster');
@@ -576,7 +576,7 @@ class Detail extends React.Component {
     const accounts = await provider.listAccounts();
 
     var q = { query: "select * from Accounts as a join Events as e on (a.address = e.creator) where a.address = ? and a.removed_date is null and e.event_id = ?", bind: [accounts[0], this.state.id] }
-    const detailAccount = await axios.post("http://localhost:8800/select", q);
+    const detailAccount = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q);
 
     if (!detailAccount.data) {
       console.log("Only Creator can edit Event")
@@ -608,7 +608,7 @@ class Detail extends React.Component {
               query: "update Events set date_event = STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), date_sell = STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), detail = ?, event_name = ?, purchase_limit = ?, venue = ? where event_id = ? and creator = ?",
               bind: [edate, sdate, detail, name, limit, venue, this.state.id, accounts[0]]
             }
-            var updateItem = await axios.post("http://localhost:8800/insert", q);
+            var updateItem = await axios.post(process.env.REACT_APP_API_BASE_URL+"/insert", q);
             console.log(updateItem);
             // var putItem = {data: {insertId: 10}}
             if (updateItem.data.affectedRows !== undefined) {

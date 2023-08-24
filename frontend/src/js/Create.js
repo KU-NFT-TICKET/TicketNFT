@@ -67,7 +67,7 @@ class Create extends React.Component {
     const accounts = await provider.listAccounts();
 
     var q = {query: "select * from Accounts where address = ? and removed_date is null", bind: [accounts[0]]}
-    const detailAccount = await axios.post("http://localhost:8800/select", q);
+    const detailAccount = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q);
 
     if(!detailAccount.data) {
       console.log("Need to Activate Account")
@@ -110,7 +110,7 @@ class Create extends React.Component {
             console.time('create Event');
             q = {query: "insert into Events (creator, date_event, date_sell, detail, event_name, purchase_limit, venue) values (?, STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), ?, ?, ?, ?)", 
             bind: [accounts[0], edate, sdate, detail, name, limit, venue]}
-            var putItem = await axios.post("http://localhost:8800/insert", q);
+            var putItem = await axios.post(process.env.REACT_APP_API_BASE_URL+"/insert", q);
             console.log(putItem);
             // var putItem = {data: {insertId: 10}}
             if (putItem.data.insertId !== undefined) {
@@ -134,7 +134,7 @@ class Create extends React.Component {
                     try {
                       q = {query: "insert into Seats (event_id, gas, price, seat_id, seat_row, zone, metadata, creator) values (?, ?, ?, ?, ?, ?, ?, ?)", 
                       bind: [putItem.data.insertId, _priceGas, wei_price, n, String.fromCharCode(i), zone[z], _metadata, accounts[0]]}
-                      var putTicket = await axios.post("http://localhost:8800/insert", q);
+                      var putTicket = await axios.post(process.env.REACT_APP_API_BASE_URL+"/insert", q);
                       console.log(putTicket)
                     } catch (e) {
                       console.log(e)
