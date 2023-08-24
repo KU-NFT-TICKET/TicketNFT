@@ -30,7 +30,7 @@
   },
   "scripts": {
     "test": "mocha",
-    "build": "webpack --config webpack.config.js"
+    "build": "react-app-rewired build"
   },
   "repository": {
     "type": "git",
