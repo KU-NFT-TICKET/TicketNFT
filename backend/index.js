@@ -2,6 +2,8 @@ import express from "express"
 import mysql from "mysql"
 import cors from "cors"
 import bodyParser from "body-parser";
+import https from "https";
+import fs from "fs";
 // import * as dotenv from 'dotenv'
 import dotenv from 'dotenv'
 dotenv.config()
@@ -95,6 +97,15 @@ app.post("/insert", (req, res) => {
 	});
 })
 
-app.listen(8800, ()=>{
-    console.log("connect from backend")
-})
+https.createServer(
+		{
+			key: fs.readFileSync("key.pem"),
+			cert: fs.readFileSync("cert.pem"),
+	  	},
+		app
+	).listen(8800, ()=>{
+    console.log('server is runing at port 8800')
+  });
+// app.listen(8800, ()=>{
+//     console.log("connect from backend")
+// })
