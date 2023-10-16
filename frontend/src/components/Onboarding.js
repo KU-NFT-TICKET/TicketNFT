@@ -12,6 +12,7 @@ import 'bootstrap/dist/js/bootstrap.bundle';
 import SignupForm from './SignupForm'
 import AccountTab from './AccountTab'
 
+axios.defaults.headers.common['Authorization'] = process.env.REACT_APP_API_TOKEN
 
 class OnboardingButton extends React.Component {
   constructor () {
@@ -27,9 +28,7 @@ class OnboardingButton extends React.Component {
   }
 
   async check_available_walletaddress(address) {
-    var q = {query: "select * from Accounts where address = ?", 
-    bind: [address]}
-    const address_q_rst = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
+    const address_q_rst = await axios.get(process.env.REACT_APP_API_BASE_URL+"/account/"+address)
     console.log("check_address")
     console.log(address_q_rst)
 

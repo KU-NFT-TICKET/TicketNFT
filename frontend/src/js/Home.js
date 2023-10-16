@@ -8,6 +8,8 @@ import { AlexaForBusiness } from "aws-sdk";
 import axios from "axios"
 import { connect } from "react-redux";
 
+axios.defaults.headers.common['Authorization'] = process.env.REACT_APP_API_TOKEN
+
 class Home extends React.Component {
 
   componentDidMount() {
@@ -37,15 +39,15 @@ class Home extends React.Component {
     
     var html = []
     try{
-      var q = {query: "select event_id, event_name, DATE_FORMAT(date_sell, '%d %b %Y %T') as date_sell from Events where creator = ?", bind: [accounts[0]]}
-      const ownEvent = await axios.post(process.env.REACT_APP_API_BASE_URL+"/select", q)
+      var q = {bind: [accounts[0]]}
+      const ownEvent = await axios.post(process.env.REACT_APP_API_BASE_URL+"/events_of_account", q)
       console.log(ownEvent)
       for (const data of ownEvent.data) {
         console.log(data)
         let link = "/detail/"+data['event_id'];
         var url = "https://nft-event-picture.s3.ap-northeast-1.amazonaws.com/poster/"+data['event_id']+".png";
         html.push((
-          <div className="col-sm-3"><div className="card card-style">
+          <div className="col-sm-3" style={{margin: '0.5%'}}><div className="card card-style">
             <img src={url} className="card-img-top card-img" alt="..." />
             <div className="card-body">
               <h5 className="card-title">{data['event_name']}</h5>

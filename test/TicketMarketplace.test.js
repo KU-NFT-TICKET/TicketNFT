@@ -20,7 +20,7 @@ contract('TicketMarketplace', ([contractDeployer, owner, creator, buyer, secondB
 
     describe('marketplace + NFT deployment', async () => {
         it('Deploys the Marketplace + NFT  SC successfully.', async () => {
-            console.log('Address is ', marketplace.address)
+            // console.log('Address is ', marketplace.address)
             assert.notEqual(marketplace.address, '', 'Should not be empty');
             assert.notEqual(marketplace.address, 0x0, 'Should not be the 0x0 address');
             assert.notEqual(marketplace.address, null, 'Should not be null');
@@ -35,36 +35,6 @@ contract('TicketMarketplace', ([contractDeployer, owner, creator, buyer, secondB
         })
     })
 
-    // describe('gas use', async () => {
-    //     it('Loop Mint a NFT', async () => {
-            // var j = 1
-            // creator = account[0]
-            // const result = await marketplace.createTicket(1, 1, 'event', [202303011800, 202302011000, 202302071215], 'A', 'A1', convertTokensToWei('1'), 10000, 'metadata', account[0], true, { from: creator})
-            // const gasUsed = result.receipt.gasUsed;
-            // console.log(`GasUsed: ${result.receipt.gasUsed}`);
-
-            // // Obtain gasPrice from the transaction
-            // const tx = await web3.eth.getTransaction(result.tx);
-            // const gasPrice = tx.gasPrice;
-            // console.log(`GasPrice: ${tx.gasPrice}`);
-            // for(var i = 0; i < 1; i++) {
-            //     if (i%600 == 0) {
-            //         j = j + 1
-            //         creator = account[j]
-            //     }
-                // const result = await marketplace.createTicket(i, 1, 'event', [202303011800, 202302011000, 202302071215], 'A', 'A'+i, convertTokensToWei('1'), 10000, 'metadata'+i, account[0], true, { from: creator})
-                // console.log(result)
-                // console.log(result['receipt']['gasUsed'])
-                // fs.appendFile(__dirname + "/message.txt", result['receipt']['gasUsed']);
-            // }
-        // })
-        // it('Check Quota of buy ticket.', async () => {
-        //     const UserLimit = await marketplace.UserLimit(creator, 1)
-        //     console.log(UserLimit)
-        //     console.log(UserLimit.toNumber())
-        // })
-    // })
-
     describe('Mint an NFT.', async () => {
         it('The hash \'metadata\' is not minted before the function call.', async () => {
             const hasBeenMinted = await marketplace.hasBeenMinted('metadata')
@@ -78,11 +48,11 @@ contract('TicketMarketplace', ([contractDeployer, owner, creator, buyer, secondB
         it('Mint a NFT and emit events with hold ticket.', async () => {
             const result = await marketplace.createTicket(1, 1, 'event', [202303011800, 202302011000, 202302071215], 'A', 'A1', convertTokensToWei('1'), 4, 'metadata', owner, true, { from: creator })
             assert.equal(result.logs.length, 2, 'Should trigger two events.');
-            console.log(result);
+            // console.log(result);
             
             const ck_owner = await marketplace.ownerOf(1)
             assert.equal(ck_owner, creator, 'The owner should be the creator.');
-            console.log(ck_owner);
+            // console.log(ck_owner);
 
             assert.equal(result.logs[0].event, 'Transfer', 'Should be the \'Transfer\' event.');
             assert.equal(result.logs[0].args.from, 0x0, 'Should be the 0x0 address.');
@@ -97,18 +67,18 @@ contract('TicketMarketplace', ([contractDeployer, owner, creator, buyer, secondB
             assert.equal(result.logs[1].args.metadata, 'metadata', 'Should log the metadata correctly.');
             
             const ownerBefore = await web3.eth.getBalance(owner)
-            console.log('ownerBefore: ', ownerBefore)
+            // console.log('ownerBefore: ', ownerBefore)
             const creatorBefore = await web3.eth.getBalance(creator)
-            console.log('creatorBefore: ', creatorBefore)
+            // console.log('creatorBefore: ', creatorBefore)
 
             // create another ticket
             const result1 = await marketplace.createTicket(2, 1, 'event', [202303011800, 202302011000, 202302071215], 'A', 'A2', convertTokensToWei('1'), 4, 'metadata1', owner, false, { from: creator, value: convertTokensToWei('1') })
             assert.equal(result1.logs.length, 2, 'Should trigger three events.');
-            console.log(result1);
+            // console.log(result1);
             const ownerAfter = await web3.eth.getBalance(owner)
-            console.log('ownerAfter: ', ownerAfter)
+            // console.log('ownerAfter: ', ownerAfter)
             const creatorAfter = await web3.eth.getBalance(creator)
-            console.log('creatorAfter: ', creatorAfter)
+            // console.log('creatorAfter: ', creatorAfter)
 
             // transfer avax
             assert.equal(parseInt(ownerBefore)+parseInt(convertTokensToWei('1')), ownerAfter, 'Owner should get 1 Avax')
@@ -209,7 +179,7 @@ contract('TicketMarketplace', ([contractDeployer, owner, creator, buyer, secondB
     describe('Create and add Ticket to Market Place.', async () => {
         it('create ticket.', async () => {
             const result = await marketplace.createTicket(3, 1, 'event', [202303011800, 202302011000, 202302091215], 'A', 'A3', convertTokensToWei('1'), 4, 'metadata3', owner, false, { from: creator, value: convertTokensToWei('1') })
-            console.log(result);
+            // console.log(result);
             assert.equal(result.logs.length, 2, 'Should trigger five events.');
             //event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
             assert.equal(result.logs[0].event, 'Transfer', 'Should be the \'Transfer\' event.');
