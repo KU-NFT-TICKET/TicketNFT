@@ -15,19 +15,21 @@ import { FileUploader } from "react-drag-drop-files";
 import Resizer from "react-image-file-resizer";
 import { create } from "ipfs-http-client";
 import {Buffer} from 'buffer';
-import {scanData, getData, putData, queryData} from './dynamoDB';
 import {uploadPic} from './fileS3';
 import Swal from 'sweetalert2'
 import axios from "axios"
+import { connect } from "react-redux";
 
 import "react-datepicker/dist/react-datepicker.css";
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 var hash = require('object-hash');
 
+axios.defaults.headers.common['Authorization'] = process.env.REACT_APP_API_TOKEN
+
 class Create extends React.Component {
-  constructor(props) {
-    super(props)
+  constructor() {
+    super()
 
     this.state = {
       zone: null,
@@ -65,8 +67,8 @@ class Create extends React.Component {
     await provider.send("eth_requestAccounts", []);
     const accounts = await provider.listAccounts();
 
-    var q = {query: "select * from Accounts where address = ? and removed_date is null", bind: [accounts[0]]}
-    const detailAccount = await axios.post("http://localhost:8800/select", q);
+    var q = {bind: [accounts[0]]}
+    const detailAccount = await axios.get(process.env.REACT_APP_API_BASE_URL+"/account/"+accounts[0]+"?is_removed=false");
 
     if(!detailAccount.data) {
       console.log("Need to Activate Account")
@@ -107,13 +109,13 @@ class Create extends React.Component {
           showLoaderOnConfirm: true,
           preConfirm: async () => {
             console.time('create Event');
-            q = {query: "insert into Events (creator, date_event, date_sell, detail, event_name, purchase_limit, venue) values (?, STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), STR_TO_DATE(?,'%Y-%m-%d %H:%i:%s'), ?, ?, ?, ?)", 
-            bind: [accounts[0], edate, sdate, detail, name, limit, venue]}
-            var putItem = await axios.post("http://localhost:8800/insert", q);
-            console.log(putItem);
+            q = {bind: [accounts[0], edate, sdate, detail, name, limit, venue]}
+            var putItem = await axios.post(process.env.REACT_APP_API_BASE_URL+"/create_event", q);
+            // console.log(putItem);
             // var putItem = {data: {insertId: 10}}
             if (putItem.data.insertId !== undefined) {
               var putPoster = uploadPic(bfP, putItem.data.insertId+'.png', 'poster');
+              console.log("putPoster: ");
               console.log(putPoster);
               var putSeat = uploadPic(bfS, putItem.data.insertId+'.png', '');
               console.log(putSeat);
@@ -131,9 +133,8 @@ class Create extends React.Component {
                         creater: accounts[0]
                     });
                     try {
-                      q = {query: "insert into Seats (event_id, gas, price, seat_id, seat_row, zone, metadata, creator) values (?, ?, ?, ?, ?, ?, ?, ?)", 
-                      bind: [putItem.data.insertId, _priceGas, wei_price, n, String.fromCharCode(i), zone[z], _metadata, accounts[0]]}
-                      var putTicket = await axios.post("http://localhost:8800/insert", q);
+                      q = {bind: [putItem.data.insertId, _priceGas, wei_price, n, String.fromCharCode(i), zone[z], _metadata, accounts[0]]}
+                      var putTicket = await axios.post(process.env.REACT_APP_API_BASE_URL+"/create_seat", q);
                       console.log(putTicket)
                     } catch (e) {
                       console.log(e)
@@ -311,168 +312,183 @@ class Create extends React.Component {
   render() {
     const {listzone, listzoneseat, listnumber, listprice} = this.state;
     const fileTypes = ["JPEG", "PNG", "GIF", "JPG"]
-    return (
-      <div>
-        <h2 style={{color: 'snow'}}>Create Event</h2>
-        <br/>
-        <form className="row g-3 needs-validation form-style" noValidate >
-          <div className="col-sm-6 box-create">
-            <div className="mb-3 row">
-              <label htmlFor="name" className="col-sm-2 col-form-label">Event Name:</label>
-              <div className="col-sm-10">
-                <input type="text" className="form-control" id="name" name="name" />
-              </div>
-            </div>
-            <div className="mb-3 row">
-              <label htmlFor="des" className="col-sm-2 col-form-label">Description:</label>
-              <div className="col-sm-10">
-                <textarea className="form-control" id="des" name="des" ></textarea>
-              </div>
-            </div>
-            <div className="mb-3 row">
-              <label htmlFor="limit" className="col-sm-2 col-form-label">User limit buy:</label>
-              <div className="col-sm-10">
-                <input type="text" className="form-control" style={{width: 100+'px'}} onKeyPress={(event) => { if (!/[0-9 .]/.test(event.key)) { event.preventDefault(); }}} id="limit" name="limit" />
-              </div>
-            </div>
-            <div className="mb-3 row">
-              <label htmlFor="sdate" className="col-sm-2 col-form-label">Sell date:</label>
-              <div className="col-sm-4">
-                <div className='form-group' id='sdate'>
-                <DatePicker
-                  selected={this.state.sdate}
-                  onChange={(e)=> this.setState({sdate: e})}
-                  showTimeSelect
-                  dateFormat="MMM d, yyyy HH:mm"
-                  timeFormat="HH:mm"
-                  minDate={addDays(new Date(), 1)}
-                  name="sdate"
-                  className="form-control"
-                />
+    if (this.props.account_detail.isLogin) {
+      return (
+        <div>
+          <h2 style={{color: 'snow'}}>Create Event</h2>
+          <br/>
+          <form className="row g-3 needs-validation form-style" noValidate >
+            <div className="col-sm-6 box-create">
+              <div className="mb-3 row">
+                <label htmlFor="name" className="col-sm-2 col-form-label">Event Name:</label>
+                <div className="col-sm-10">
+                  <input type="text" className="form-control" id="name" name="name" />
                 </div>
               </div>
-              <label htmlFor="edate" className="col-sm-2 col-form-label">Event date:</label>
-              <div className="col-sm-4">
-                <div className='form-group' id='edate'>
-                <DatePicker
-                  selected={this.state.edate}
-                  onChange={(e)=> this.setState({edate: e})}
-                  showTimeSelect
-                  dateFormat="MMM d, yyyy HH:mm"
-                  timeFormat="HH:mm"
-                  minDate={addDays(new Date(), 2)}
-                  name="edate"
-                  className="form-control"
-                />
+              <div className="mb-3 row">
+                <label htmlFor="des" className="col-sm-2 col-form-label">Description:</label>
+                <div className="col-sm-10">
+                  <textarea className="form-control" id="des" name="des" ></textarea>
+                </div>
+              </div>
+              <div className="mb-3 row">
+                <label htmlFor="limit" className="col-sm-2 col-form-label">User limit buy:</label>
+                <div className="col-sm-10">
+                  <input type="text" className="form-control" style={{width: 100+'px'}} onKeyPress={(event) => { if (!/[0-9 .]/.test(event.key)) { event.preventDefault(); }}} id="limit" name="limit" />
+                </div>
+              </div>
+              <div className="mb-3 row">
+                <label htmlFor="sdate" className="col-sm-2 col-form-label">Sell date:</label>
+                <div className="col-sm-4">
+                  <div className='form-group' id='sdate'>
+                  <DatePicker
+                    selected={this.state.sdate}
+                    onChange={(e)=> this.setState({sdate: e})}
+                    showTimeSelect
+                    dateFormat="MMM d, yyyy HH:mm"
+                    timeFormat="HH:mm"
+                    minDate={addDays(new Date(), 1)}
+                    name="sdate"
+                    className="form-control"
+                  />
+                  </div>
+                </div>
+                <label htmlFor="edate" className="col-sm-2 col-form-label">Event date:</label>
+                <div className="col-sm-4">
+                  <div className='form-group' id='edate'>
+                  <DatePicker
+                    selected={this.state.edate}
+                    onChange={(e)=> this.setState({edate: e})}
+                    showTimeSelect
+                    dateFormat="MMM d, yyyy HH:mm"
+                    timeFormat="HH:mm"
+                    minDate={addDays(new Date(), 2)}
+                    name="edate"
+                    className="form-control"
+                  />
+                  </div>
+                </div>
+              </div>
+              <div className="mb-3 row">
+                <label htmlFor="venue" className="col-sm-2 col-form-label">Venue:</label>
+                <div className="col-sm-10">
+                  <input type="text" className="form-control" id="venue" name="venue"/>
                 </div>
               </div>
             </div>
-            <div className="mb-3 row">
-              <label htmlFor="venue" className="col-sm-2 col-form-label">Venue:</label>
-              <div className="col-sm-10">
-                <input type="text" className="form-control" id="venue" name="venue"/>
+            <div className="col-sm-5 box-create">
+              <div className="mb-3 row">
+                <div className="col-sm-10 row">
+                  <div className="col-sm-6 row">
+                    <div className="col-sm-3">
+                      <label htmlFor="zone" className="col-form-label">Zone:</label>
+                    </div>
+                    <div className="col-sm-9">
+                      <input type="text" className="form-control" id="zone" name="zone" value={this.state.zone} onChange={(e)=> this.setState({zone: e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="col-sm-6 row">
+                    <div className="col-sm-4">
+                      <label htmlFor="zoneseat" className="col-sm-2 col-form-label">Seat:</label>
+                    </div>
+                    <div className="col-sm-8">
+                      <input type="text" className="form-control" id="zoneseat" name="zoneseat" value={this.state.zoneseat} onChange={(e)=> this.setState({zoneseat: e.target.value})} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mb-3 row">
+                <div className="col-sm-10 row">
+                  <div className="col-sm-6 row">
+                    <div className="col-sm-3"><label htmlFor="number" className="col-form-label">No.:</label></div>
+                    <div className="col-sm-9">
+                      <input type="text" className="form-control" onKeyPress={(event) => { if (!/[0-9 .]/.test(event.key)) { event.preventDefault(); }}} id="number" name="number" value={this.state.number} onChange={(e)=> this.setState({number: e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="col-sm-6 row">
+                  <div className="col-sm-4"><label htmlFor="price" className="col-sm-1 col-form-label">Price:</label></div>
+                    <div className="col-sm-8">
+                      <input type="text" className="form-control" id="price" onKeyPress={(event) => { if (!/[0-9 .]/.test(event.key)) { event.preventDefault(); }}} name="price" value={this.state.price} onChange={(e)=> this.setState({price: e.target.value})} />
+                    </div>
+                  </div>
+                </div>
+                <div className="col-sm-2">
+                  <FontAwesomeIcon onClick={this.addElement} icon={faCirclePlus} style={{cursor: "pointer", height: 20, marginTop: 10+'px'}} />
+                </div>
+              </div>
+              <hr/>
+              {listzone.map((val, key) => {
+                return (
+                  <div className="mb-3 row">
+                    <div className="col-sm-2">
+                      Zone: {val}
+                    </div>
+                    <div className="col-sm-3">
+                      ZoneSeat: {listzoneseat[key]} 
+                    </div>
+                    <div className="col-sm-2">
+                      Seat: {listnumber[key]} 
+                    </div>
+                    <div className="col-sm-3">
+                      Price: {listprice[key]} 
+                    </div>
+                    <div className="col-sm-2"><FontAwesomeIcon onClick={(e)=> this.removeElement(key)} icon={faCircleMinus} style={{cursor: "pointer", height: 20}} /></div>
+                  </div>
+                )
+              })}
+                
+            </div>
+            <br/><br/>
+            <div className="row box-create">
+              <div className="col-sm-6">
+                <div className="dragdropimg">
+                  <h3>Drop Your Poster</h3>
+                  <FileUploader
+                    multiple={true}
+                    handleChange={this.setImageP}
+                    name="fileposter"
+                    types={fileTypes}
+                  />
+                  <p>{this.state.fp ? `File name: ${this.state.fp[0].name}` : "no files uploaded yet"}</p>
+                  <img src={this.state.filePoster} />
+                </div>
+              </div>
+              <div className="col-sm-6">
+                <div className="dragdropimg">
+                  <h3>Drop Your Seat</h3>
+                  <FileUploader
+                    multiple={true}
+                    handleChange={this.setImageS}
+                    name="fileseat"
+                    types={fileTypes}
+                  />
+                  <p>{this.state.fs ? `File name: ${this.state.fs[0].name}` : "no files uploaded yet"}</p>
+                  <img src={this.state.fileSeat} />
+                </div>
               </div>
             </div>
+            <div className="row">
+              <div className="col-sm-2"><button type="button" onClick={this.clearForm} className="btn btn-primary">Clear</button></div>
+              <div className="offset-sm-8 col-sm-2"><button type="button" onClick={this.handleSubmit}  className="btn btn-success">Submit</button></div>
+            </div>
+          </form>
+        </div>
+      );
+    } else {
+      return (
+        <div className="card mb-3 panel-style">
+          <div className="card-body">
+            <h5 className="card-title">Welcome to NFT Ticket</h5>
+            <p className="card-text">Please Login before create new events.</p>
           </div>
-          <div className="col-sm-5 box-create">
-            <div className="mb-3 row">
-              <div className="col-sm-10 row">
-                <div className="col-sm-6 row">
-                  <div className="col-sm-3">
-                    <label htmlFor="zone" className="col-form-label">Zone:</label>
-                  </div>
-                  <div className="col-sm-9">
-                    <input type="text" className="form-control" id="zone" name="zone" value={this.state.zone} onChange={(e)=> this.setState({zone: e.target.value})} />
-                  </div>
-                </div>
-                <div className="col-sm-6 row">
-                  <div className="col-sm-4">
-                    <label htmlFor="zoneseat" className="col-sm-2 col-form-label">Seat:</label>
-                  </div>
-                  <div className="col-sm-8">
-                    <input type="text" className="form-control" id="zoneseat" name="zoneseat" value={this.state.zoneseat} onChange={(e)=> this.setState({zoneseat: e.target.value})} />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="mb-3 row">
-              <div className="col-sm-10 row">
-                <div className="col-sm-6 row">
-                  <div className="col-sm-3"><label htmlFor="number" className="col-form-label">No.:</label></div>
-                  <div className="col-sm-9">
-                    <input type="text" className="form-control" onKeyPress={(event) => { if (!/[0-9 .]/.test(event.key)) { event.preventDefault(); }}} id="number" name="number" value={this.state.number} onChange={(e)=> this.setState({number: e.target.value})} />
-                  </div>
-                </div>
-                <div className="col-sm-6 row">
-                <div className="col-sm-4"><label htmlFor="price" className="col-sm-1 col-form-label">Price:</label></div>
-                  <div className="col-sm-8">
-                    <input type="text" className="form-control" id="price" onKeyPress={(event) => { if (!/[0-9 .]/.test(event.key)) { event.preventDefault(); }}} name="price" value={this.state.price} onChange={(e)=> this.setState({price: e.target.value})} />
-                  </div>
-                </div>
-              </div>
-              <div className="col-sm-2">
-                <FontAwesomeIcon onClick={this.addElement} icon={faCirclePlus} style={{cursor: "pointer", height: 20, marginTop: 10+'px'}} />
-              </div>
-            </div>
-            <hr/>
-            {listzone.map((val, key) => {
-              return (
-                <div className="mb-3 row">
-                  <div className="col-sm-2">
-                    Zone: {val}
-                  </div>
-                  <div className="col-sm-3">
-                    ZoneSeat: {listzoneseat[key]} 
-                  </div>
-                  <div className="col-sm-2">
-                    Seat: {listnumber[key]} 
-                  </div>
-                  <div className="col-sm-3">
-                    Price: {listprice[key]} 
-                  </div>
-                  <div className="col-sm-2"><FontAwesomeIcon onClick={(e)=> this.removeElement(key)} icon={faCircleMinus} style={{cursor: "pointer", height: 20}} /></div>
-                </div>
-              )
-            })}
-              
-          </div>
-          <br/><br/>
-          <div className="row box-create">
-            <div className="col-sm-6">
-              <div className="dragdropimg">
-                <h3>Drop Your Poster</h3>
-                <FileUploader
-                  multiple={true}
-                  handleChange={this.setImageP}
-                  name="fileposter"
-                  types={fileTypes}
-                />
-                <p>{this.state.fp ? `File name: ${this.state.fp[0].name}` : "no files uploaded yet"}</p>
-                <img src={this.state.filePoster} />
-              </div>
-            </div>
-            <div className="col-sm-6">
-              <div className="dragdropimg">
-                <h3>Drop Your Seat</h3>
-                <FileUploader
-                  multiple={true}
-                  handleChange={this.setImageS}
-                  name="fileseat"
-                  types={fileTypes}
-                />
-                <p>{this.state.fs ? `File name: ${this.state.fs[0].name}` : "no files uploaded yet"}</p>
-                <img src={this.state.fileSeat} />
-              </div>
-            </div>
-          </div>
-          <div className="row">
-            <div className="col-sm-2"><button type="button" onClick={this.clearForm} className="btn btn-primary">Clear</button></div>
-            <div className="offset-sm-8 col-sm-2"><button type="button" onClick={this.handleSubmit}  className="btn btn-success">Submit</button></div>
-          </div>
-        </form>
-      </div>
-    );
+        </div>
+      );
+    }
   }
 }
- 
-export default Create;
+
+const mapStateToProps = (state) => ({
+  account_detail: state.account
+});
+
+export default connect(mapStateToProps)(Create);

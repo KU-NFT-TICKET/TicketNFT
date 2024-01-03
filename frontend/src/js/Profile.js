@@ -1,7 +1,7 @@
 import React from 'react'
 import $ from 'jquery';
 import { connect } from "react-redux";
-import { changeWalletAccount, changeChainId, checkMetaMaskInstalled, setMMInstalledFlag, setConnectFlag, setLoginFlag } from '../features/account/accountSlicer';
+import { changeWalletAccount, changeChainId, checkMetaMaskInstalled, setMMInstalledFlag, setConnectFlag, setLoginFlag } from '../features/account/accountSlice';
 import { decode_thaiID } from '../features/function'
 // import { DataGrid, GridColDef, GridValueGetterParams } from '@mui/x-data-grid';
 

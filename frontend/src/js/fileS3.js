@@ -1,17 +1,25 @@
 // Create service client module using ES6 syntax.
 import { PutObjectCommand, S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 // Set the AWS Region.
-const REGION = "ap-northeast-1";
+const REGION = process.env.REACT_APP_S3_REGION;
 // Create an Amazon S3 service client object.
 var creds = {accessKeyId: process.env.REACT_APP_accessKeyId_pic,
     secretAccessKey: process.env.REACT_APP_secretAccessKey_pic}
-const s3Client = new S3Client({ region: REGION, credentials: creds});
+const s3_config = { region: REGION, credentials: creds}
+const s3Client = new S3Client(s3_config);
+var s3 = undefined;
+
+console.log(s3_config);
+
+console.log(s3Client);
+// console.log(s3Client.doesBucketExist(process.env.REACT_APP_S3_BUCKET));
+
 
 export const uploadPic = async (file, newFileName, folder) => {
     try {
         if (folder === "poster") {
             var bucketParams = {
-                Bucket: "nft-event-picture",
+                Bucket: "nft-event-images",
                 Key: "poster/"+newFileName,
                 Body: file,
             };
@@ -24,7 +32,7 @@ export const uploadPic = async (file, newFileName, folder) => {
             );
         } else {
             var bucketParams = {
-                Bucket: "nft-event-picture",
+                Bucket: "nft-event-images",
                 Key: "seat/"+newFileName,
                 Body: file,
             };
@@ -45,7 +53,7 @@ export const deletePic = async (newFileName, folder) => {
     try {
         if (folder === "poster") {
             var bucketParams = {
-                Bucket: "nft-event-picture",
+                Bucket: "nft-event-images",
                 Key: "poster/"+newFileName
             };
             const data = await s3Client.send(new DeleteObjectCommand(bucketParams));
@@ -57,7 +65,7 @@ export const deletePic = async (newFileName, folder) => {
             );
         } else {
             var bucketParams = {
-                Bucket: "nft-event-picture",
+                Bucket: "nft-event-images",
                 Key: "seat/"+newFileName
             };
             const data = await s3Client.send(new DeleteObjectCommand(bucketParams));
