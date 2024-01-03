@@ -45,7 +45,7 @@ class Home extends React.Component {
       for (const data of ownEvent.data) {
         console.log(data)
         let link = "/detail/"+data['event_id'];
-        var url = "https://nft-event-picture.s3.ap-northeast-1.amazonaws.com/poster/"+data['event_id']+".png";
+        var url = "https://"+process.env.REACT_APP_S3_BUCKET+".s3."+process.env.REACT_APP_S3_REGION+".amazonaws.com/poster/"+data['event_id']+".png";
         html.push((
           <div className="col-sm-3" style={{margin: '0.5%'}}><div className="card card-style">
             <img src={url} className="card-img-top card-img" alt="..." />

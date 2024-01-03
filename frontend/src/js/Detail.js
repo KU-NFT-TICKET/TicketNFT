@@ -680,8 +680,8 @@ class Detail extends React.Component {
   render() {
     const { listzone, listzoneseat, listnumber, listprice } = this.state;
     const fileTypes = ["JPEG", "PNG", "GIF", "JPG"]
-    var imgurl = "https://nft-event-picture.s3.ap-northeast-1.amazonaws.com/poster/" + this.state.id + ".png"
-    var imgurl_seat = "https://nft-event-picture.s3.ap-northeast-1.amazonaws.com/seat/" + this.state.id + ".png"
+    var imgurl = "https://"+process.env.REACT_APP_S3_BUCKET+".s3."+process.env.REACT_APP_S3_REGION+".amazonaws.com/poster/" + this.state.id + ".png";
+    var imgurl_seat = "https://"+process.env.REACT_APP_S3_BUCKET+".s3."+process.env.REACT_APP_S3_REGION+".amazonaws.com/seat/" + this.state.id + ".png";
     console.log(this.state)
     let date_ob = new Date();
     if (this.props.account_detail.isLogin) {
